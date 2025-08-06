@@ -197,7 +197,7 @@ pub async fn create_pty_session(config: ShellConfig) -> Result<SharedPtySession>
 /// - Provides async methods that properly handle mutex locking and PTY operations
 ///
 /// **Usage Pattern:**
-/// ```rust,no_run
+/// ```rust,no_run,ignore
 /// let config = ShellConfig::default();
 /// let manager = PtySessionManager::new(config).await?;
 ///

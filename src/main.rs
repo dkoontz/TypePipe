@@ -1,9 +1,16 @@
 use anyhow::Result;
 use clap::{Arg, Command};
+use std::{env, path::PathBuf, ffi::OsStr};
 use typey_pipe::shell::ShellConfig;
+use which::which;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let default_shell_path: &'static OsStr = Box::leak(Box::new(which("bash")
+        .or_else(|_| env::var("SHELL").map(PathBuf::from))
+        .unwrap_or_else(|_| PathBuf::from("bash"))
+        .into_os_string()
+    )).as_os_str();
     let matches = Command::new("typeypipe")
         .version(env!("CARGO_PKG_VERSION"))
         .about("Transparent shell messaging system")
@@ -12,8 +19,8 @@ async fn main() -> Result<()> {
                 .short('s')
                 .long("shell")
                 .value_name("SHELL")
-                .help("Shell to use (default: /bin/bash)")
-                .default_value("/bin/bash")
+                .help("Shell to use")
+                .default_value_os(default_shell_path)
         )
         .arg(
             Arg::new("queue-dir")
