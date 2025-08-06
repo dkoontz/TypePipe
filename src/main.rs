@@ -5,7 +5,7 @@ use typey_pipe::shell::ShellConfig;
 #[tokio::main]
 async fn main() -> Result<()> {
     let matches = Command::new("typeypipe")
-        .version("0.1.0")
+        .version(env!("CARGO_PKG_VERSION"))
         .about("Transparent shell messaging system")
         .arg(
             Arg::new("shell")

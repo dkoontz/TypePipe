@@ -5,6 +5,7 @@ set -e
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Repository settings
@@ -12,7 +13,21 @@ REPO="dkoontz/TypeyPipe"
 HOMEBREW_DIR="../homebrew-typeypipe"
 FORMULA_FILE="$HOMEBREW_DIR/Formula/typeypipe.rb"
 
-echo -e "${GREEN}🍺 Updating Homebrew formula for TypeyPipe${NC}"
+echo -e "${GREEN}🚀 Build, Release, and Update Homebrew for TypeyPipe${NC}"
+
+# Check if gh CLI is available
+if ! command -v gh &> /dev/null; then
+    echo -e "${RED}❌ Error: GitHub CLI (gh) is not installed${NC}"
+    echo "Please install it with: brew install gh"
+    exit 1
+fi
+
+# Check if authenticated with GitHub
+if ! gh auth status &> /dev/null; then
+    echo -e "${RED}❌ Error: Not authenticated with GitHub${NC}"
+    echo "Please run: gh auth login"
+    exit 1
+fi
 
 # Check if homebrew directory exists
 if [ ! -d "$HOMEBREW_DIR" ]; then
@@ -27,18 +42,71 @@ if [ ! -f "$FORMULA_FILE" ]; then
     exit 1
 fi
 
-echo -e "${YELLOW}📡 Fetching latest release information...${NC}"
-
-# Get latest release tag from GitHub API
-LATEST_RELEASE=$(curl -s "https://api.github.com/repos/$REPO/releases/latest")
-VERSION=$(echo "$LATEST_RELEASE" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/' | sed 's/^v//')
+# Get version from Cargo.toml
+echo -e "${YELLOW}📖 Reading version from Cargo.toml...${NC}"
+VERSION=$(grep '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
 
 if [ -z "$VERSION" ]; then
-    echo -e "${RED}❌ Error: Could not fetch latest release version${NC}"
+    echo -e "${RED}❌ Error: Could not read version from Cargo.toml${NC}"
     exit 1
 fi
 
-echo -e "${GREEN}📦 Latest version: $VERSION${NC}"
+echo -e "${GREEN}📦 Version from Cargo.toml: $VERSION${NC}"
+
+# Check if release already exists
+echo -e "${YELLOW}🔍 Checking if release v$VERSION already exists...${NC}"
+if gh release view "v$VERSION" &> /dev/null; then
+    echo -e "${BLUE}ℹ️ Release v$VERSION already exists, skipping build step${NC}"
+else
+    echo -e "${YELLOW}🏗️ Running GitHub workflow to build and release v$VERSION...${NC}"
+    
+    # Trigger the workflow
+    gh workflow run release.yml --field version="$VERSION"
+    
+    echo -e "${YELLOW}⏳ Waiting for workflow to complete...${NC}"
+    
+    # Wait for the workflow to start (give it a few seconds)
+    sleep 5
+    
+    # Get the most recent workflow run
+    RUN_ID=$(gh run list --workflow=release.yml --limit=1 --json databaseId --jq '.[0].databaseId')
+    
+    if [ -z "$RUN_ID" ]; then
+        echo -e "${RED}❌ Error: Could not find workflow run${NC}"
+        exit 1
+    fi
+    
+    echo -e "${BLUE}📊 Workflow run ID: $RUN_ID${NC}"
+    
+    # Wait for completion with status updates
+    while true; do
+        STATUS=$(gh run view "$RUN_ID" --json status --jq '.status')
+        
+        case $STATUS in
+            "completed")
+                CONCLUSION=$(gh run view "$RUN_ID" --json conclusion --jq '.conclusion')
+                if [ "$CONCLUSION" = "success" ]; then
+                    echo -e "${GREEN}✅ Workflow completed successfully!${NC}"
+                    break
+                else
+                    echo -e "${RED}❌ Workflow failed with conclusion: $CONCLUSION${NC}"
+                    echo -e "${RED}Check the workflow logs: gh run view $RUN_ID --log${NC}"
+                    exit 1
+                fi
+                ;;
+            "in_progress"|"queued")
+                echo -e "${BLUE}⏳ Workflow status: $STATUS (waiting...)${NC}"
+                sleep 30
+                ;;
+            *)
+                echo -e "${RED}❌ Unexpected workflow status: $STATUS${NC}"
+                exit 1
+                ;;
+        esac
+    done
+    
+    echo -e "${GREEN}🎉 Release v$VERSION created successfully!${NC}"
+fi
 
 # Construct download URLs
 MACOS_URL="https://github.com/$REPO/releases/download/v$VERSION/typeypipe-v$VERSION-macos-x64.tar.gz"
