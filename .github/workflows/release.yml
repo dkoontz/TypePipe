@@ -92,6 +92,18 @@ jobs:
           fi
           echo "✅ Version format is valid: ${{ inputs.version }}"
 
+      - name: Validate version matches Cargo.toml
+        run: |
+          CARGO_VERSION=$(grep '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
+          if [ "$CARGO_VERSION" != "${{ inputs.version }}" ]; then
+            echo "❌ Version mismatch!"
+            echo "  Input version: ${{ inputs.version }}"
+            echo "  Cargo.toml version: $CARGO_VERSION"
+            echo "Please update Cargo.toml version to match the release version."
+            exit 1
+          fi
+          echo "✅ Version matches Cargo.toml: ${{ inputs.version }}"
+
       - name: Check if tag exists
         run: |
           if git tag -l | grep -qE "^v${{ inputs.version }}$"; then

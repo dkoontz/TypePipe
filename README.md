@@ -2,6 +2,20 @@
 
 A simple wrapper with PTY support that provides transparent shell access with advanced asynchronous messaging from external processes.
 
+## Installation
+
+### Homebrew (macOS/Linux)
+
+```bash
+brew tap dkoontz/typeypipe
+brew install typeypipe
+```
+
+### Manual Installation
+
+Download the latest release for your platform from [GitHub Releases](https://github.com/dkoontz/TypeyPipe/releases/latest):
+
+
 ## Features
 
 ### 🚀 **Transparent Shell Integration**
@@ -231,17 +245,16 @@ sendCommand('webapp', '');                     // Press Enter
 The wrapper creates a pseudo-terminal (PTY) and spawns your chosen shell inside it. Input comes from two sources: interactive terminal and programmatic queue files. All output flows transparently to your terminal.
 
 ### Core Functionality
-1. **Raw Terminal Mode**: Disables line buffering so Ctrl+C goes directly to shell processes
-2. **Background Output Forwarding**: Shell output appears immediately without buffering
-3. **Smart Exit Detection**: Automatically exits when shell process terminates
-4. **Signal Passthrough**: Ctrl+C cancels shell processes instead of killing wrapper
+- **Background Output Forwarding**: Shell output appears immediately without buffering
+- **Smart Exit Detection**: Automatically exits when shell process terminates
+- **Signal Passthrough**: Ctrl+C cancels shell processes instead of killing wrapper
 
 ### Queue Processing
-1. **File System Monitoring**: Watches `.tp/<name>/` directory for new files
-2. **Atomic Processing**: Files are processed in chronological order
-3. **Raw Text Forwarding**: File contents are sent exactly as stored (no modification)
-4. **Concurrent Safety**: Queue processor and interactive input both use mutex-protected PTY, the queue processor pauses when interactive input is detected
-5. **Automatic Cleanup**: Queue directories are created on startup and removed on exit
+- **File System Monitoring**: Watches `.tp/<name>/` directory for new files
+- **Atomic Processing**: Files are processed in chronological order
+- **Raw Text Forwarding**: File contents are sent exactly as stored (no modification)
+- **Concurrent Safety**: Queue processor and interactive input both use mutex-protected PTY, the queue processor pauses when interactive input is detected
+- **Automatic Cleanup**: Queue directories are created on startup and removed on exit
 
 ### Key Behavior Notes
 - **Exact Content**: Queue system sends file contents exactly as stored - no additions or modifications
