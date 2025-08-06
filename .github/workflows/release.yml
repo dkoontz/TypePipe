@@ -1,0 +1,187 @@
+name: Build and Release Typey Pipe
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (e.g., 0.9.0)"
+        required: true
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            binary_name: typeypipe
+            archive_name: typeypipe-v${{ inputs.version }}-macos-x64.tar.gz
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            binary_name: typeypipe
+            archive_name: typeypipe-v${{ inputs.version }}-linux-x64.tar.gz
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          override: true
+          profile: minimal
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Create archive
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar -czf ../../../${{ matrix.archive_name }} ${{ matrix.binary_name }}
+          cd ../../..
+          ls -la ${{ matrix.archive_name }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.archive_name }}
+          path: ${{ matrix.archive_name }}
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Validate version format
+        run: |
+          if ! echo "${{ inputs.version }}" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "❌ Invalid version format. Expected semantic version (e.g., 1.0.0)"
+            exit 1
+          fi
+          echo "✅ Version format is valid: ${{ inputs.version }}"
+
+      - name: Check if tag exists
+        run: |
+          if git tag -l | grep -qE "^v${{ inputs.version }}$"; then
+            echo "❌ Tag v${{ inputs.version }} already exists"
+            exit 1
+          fi
+          echo "✅ Tag v${{ inputs.version }} is available"
+
+      - name: Create release tag
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag -a "v${{ inputs.version }}" -m "Release v${{ inputs.version }}"
+          git push origin "v${{ inputs.version }}"
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          # Get the latest tag before this one
+          LATEST_TAG=$(git tag --sort=-version:refname | grep -v "v${{ inputs.version }}" | head -1)
+
+          if [ -z "$LATEST_TAG" ]; then
+            # No previous tags, get all commits
+            COMMITS=$(git log --pretty=format:"- %s (%h)" --reverse)
+          else
+            # Get commits since the latest tag
+            COMMITS=$(git log ${LATEST_TAG}..HEAD --pretty=format:"- %s (%h)" --reverse)
+          fi
+
+          # Create release notes
+          cat > release_notes.md << EOF
+          ## Typey Pipe v${{ inputs.version }}
+
+          ### Changes
+          ${COMMITS}
+
+          ### Installation
+
+          Download the appropriate binary for your platform:
+          - **macOS**: \`typeypipe-v${{ inputs.version }}-macos-x64.tar.gz\`
+          - **Linux**: \`typeypipe-v${{ inputs.version }}-linux-x64.tar.gz\`
+
+          Extract and run:
+          \`\`\`bash
+          tar -xzf typeypipe-v${{ inputs.version }}-[platform].tar.gz
+          ./typeypipe --help
+          \`\`\`
+
+          ### What's Typey Pipe?
+
+          Typey Pipe is a shell wrapper that creates a mailbox system for external applications to send input to a shell process. It supports complex CLI applications that require advanced UI redrawing capabilities.
+          EOF
+
+          echo "Generated release notes:"
+          cat release_notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ inputs.version }}
+          name: Typey Pipe v${{ inputs.version }}
+          body_path: release_notes.md
+          files: |
+            */typeypipe-v${{ inputs.version }}-*.tar.gz
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Add version label to repository
+        run: |
+          # Create or update the version label
+          gh label create "version-${{ inputs.version }}" \
+            --description "Release version ${{ inputs.version }}" \
+            --color "0366d6" || \
+          gh label edit "version-${{ inputs.version }}" \
+            --description "Release version ${{ inputs.version }}" \
+            --color "0366d6"
+
+          echo "✅ Added version label: version-${{ inputs.version }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "🎉 Successfully created release v${{ inputs.version }}"
+          echo "📦 Release includes:"
+          echo "  - macOS x64 binary"
+          echo "  - Linux x64 binary"
+          echo "  - Automatic release notes"
+          echo "  - Version tag and label"
+          echo ""
+          echo "🔗 Release URL: https://github.com/${{ github.repository }}/releases/tag/v${{ inputs.version }}"
