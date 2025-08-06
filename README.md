@@ -11,6 +11,52 @@ brew tap dkoontz/typeypipe
 brew install typeypipe
 ```
 
+### Nix (Flakes)
+
+Add this to your flake inputs:
+
+```nix
+  typeypipe-flake = {
+    url = "github:dkoontz/TypeyPipe";
+  };
+```
+
+Make sure to pass the input (or all of your flake inputs) to `specialArgs`:
+
+```nix
+{
+  inputs = {
+    # ... other inputs.
+    typeypipe-flake = {
+      url = "github:dkoontz/TypeyPipe";
+    };
+  };
+
+  outputs = flake-inputs@{
+    nixpkgs,
+    typeypipe-flake,
+    self,
+    ...
+  }: {
+    # Use darwinConfigurations and `nix-darwin.li.darwinSystem` for macOS, and
+    # make sure your platform and hostname match.
+    nixosConfigurations.aarch64-linux.my-host = nixpkgs.lib.nixosSystem {
+       specialArgs = {
+          inherit flake-inputs;
+          system = "aarch64-linux";
+       };
+       modules = [
+         ({ flake-inputs, system, ... }: {
+            environment.systemPackages = [
+              flake-inputs.typeypipe-flake.packages.${system}.default
+            ];
+         })
+       ];
+    };
+  };
+}
+```
+
 ### Manual Installation
 
 Download the latest release for your platform from [GitHub Releases](https://github.com/dkoontz/TypeyPipe/releases/latest):
