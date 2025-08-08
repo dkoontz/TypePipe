@@ -15,7 +15,7 @@ use super::options::Options;
 use super::plugins::{PluginAliases, PluginsConfigError};
 use super::theme::{Themes, UiConfig};
 use super::web_client::WebClientConfig;
-use crate::cli::{CliArgs, Command};
+use crate::cli::CliArgs;
 use crate::envs::EnvironmentVariables;
 use crate::{home, setup};
 
@@ -142,11 +142,7 @@ impl TryFrom<&CliArgs> for Config {
             return Config::from_path(path, Some(default_config));
         }
 
-        if let Some(Command::Setup(ref setup)) = opts.command {
-            if setup.clean {
-                return Config::from_default_assets();
-            }
-        }
+
 
         let config_dir = opts
             .config_dir
@@ -508,20 +504,7 @@ mod config_test {
         assert!(result.is_err());
     }
 
-    #[test]
-    fn try_from_cli_args_with_option_clean() {
-        // makes sure --clean works... TODO: how can this actually fail now?
-        use crate::setup::Setup;
-        let opts = CliArgs {
-            command: Some(Command::Setup(Setup {
-                clean: true,
-                ..Setup::default()
-            })),
-            ..Default::default()
-        };
-        let result = Config::try_from(&opts);
-        assert!(result.is_ok());
-    }
+
 
     #[test]
     fn try_from_cli_args_with_config_dir() {
