@@ -15,7 +15,7 @@ This phase focuses on creating a simple, direct-rendered status bar that display
 
 ### 1. Create Simple Status Component
 
-#### Create `zellij-server/src/status_bar.rs`
+#### Create `typeypipe/zellij-server/src/status_bar.rs`
 - [ ] Create new file for status bar logic
 - [ ] Define `StatusBar` struct with basic fields:
   - [ ] Terminal width
@@ -43,7 +43,7 @@ This phase focuses on creating a simple, direct-rendered status bar that display
 
 ### 2. Integrate Status Rendering into Screen
 
-#### Modify `zellij-server/src/screen.rs`
+#### Modify `typeypipe/zellij-server/src/screen.rs`
 - [ ] Add `status_bar: StatusBar` field to `Screen` struct
 - [ ] Initialize status bar in `Screen::new()`
 - [ ] Reserve bottom row for status bar in terminal calculations
@@ -64,7 +64,7 @@ This phase focuses on creating a simple, direct-rendered status bar that display
 
 ### 3. Modify Terminal Pane Integration
 
-#### Update `zellij-server/src/panes/terminal_pane.rs`
+#### Update `typeypipe/zellij-server/src/panes/terminal_pane.rs`
 - [ ] Modify terminal pane to work with reduced height
 - [ ] Ensure terminal pane doesn't overwrite status bar
 - [ ] Update scroll calculations for status bar space
@@ -137,20 +137,20 @@ After completing Phase 4:
 
 ## Files Created
 
-- [ ] `zellij-server/src/status_bar.rs` - Status bar implementation
+- [ ] `typeypipe/zellij-server/src/status_bar.rs` - Status bar implementation
 
 ## Files Modified
 
-- [ ] `zellij-server/src/screen.rs` - Status bar integration
-- [ ] `zellij-server/src/panes/terminal_pane.rs` - Height adjustments
-- [ ] `zellij-server/src/lib.rs` - Add status bar module
-- [ ] `zellij-utils/src/input/config.rs` - Status bar configuration
+- [ ] `typeypipe/zellij-server/src/screen.rs` - Status bar integration
+- [ ] `typeypipe/zellij-server/src/panes/terminal_pane.rs` - Height adjustments
+- [ ] `typeypipe/zellij-server/src/lib.rs` - Add status bar module
+- [ ] `typeypipe/zellij-utils/src/input/config.rs` - Status bar configuration
 
 ## Files to Review
 
 Before proceeding to Phase 5:
-- [ ] `zellij-server/src/status_bar.rs`
-- [ ] `zellij-server/src/screen.rs`
+- [ ] `typeypipe/zellij-server/src/status_bar.rs`
+- [ ] `typeypipe/zellij-server/src/screen.rs`
 - [ ] Status bar rendering output
 - [ ] Terminal size calculations
 

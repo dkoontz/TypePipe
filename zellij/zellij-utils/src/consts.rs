@@ -89,10 +89,51 @@ mod not_wasm {
     use std::collections::HashMap;
     use std::path::PathBuf;
 
+    // Convenience macro to add plugins to the asset map (see `ASSET_MAP`)
+    //
+    // Plugins are taken from:
+    //
+    // - `zellij-utils/assets/plugins`: When building in release mode OR when the
+    //   `plugins_from_target` feature IS NOT set
+    // - `zellij-utils/../target/wasm32-wasip1/debug`: When building in debug mode AND the
+    //   `plugins_from_target` feature IS set
+    macro_rules! add_plugin {
+        ($assets:expr, $plugin:literal) => {
+            $assets.insert(
+                PathBuf::from("plugins").join($plugin),
+                #[cfg(any(not(feature = "plugins_from_target"), not(debug_assertions)))]
+                include_bytes!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/plugins/",
+                    $plugin
+                ))
+                .to_vec(),
+                #[cfg(all(feature = "plugins_from_target", debug_assertions))]
+                include_bytes!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/../target/wasm32-wasip1/debug/",
+                    $plugin
+                ))
+                .to_vec(),
+            );
+        };
+    }
+
     lazy_static! {
-        // Empty asset map - plugins removed for shell wrapper
+        // Zellij asset map
         pub static ref ASSET_MAP: HashMap<PathBuf, Vec<u8>> = {
-            std::collections::HashMap::new()
+            let mut assets = std::collections::HashMap::new();
+            add_plugin!(assets, "compact-bar.wasm");
+            add_plugin!(assets, "status-bar.wasm");
+            add_plugin!(assets, "tab-bar.wasm");
+            add_plugin!(assets, "strider.wasm");
+            add_plugin!(assets, "session-manager.wasm");
+            add_plugin!(assets, "configuration.wasm");
+            add_plugin!(assets, "plugin-manager.wasm");
+            add_plugin!(assets, "about.wasm");
+            add_plugin!(assets, "share.wasm");
+            add_plugin!(assets, "multiple-select.wasm");
+            assets
         };
     }
 }

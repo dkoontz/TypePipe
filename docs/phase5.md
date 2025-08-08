@@ -16,15 +16,15 @@ This phase focuses on completely removing the plugin system infrastructure, incl
 ### 1. Delete Plugin Infrastructure
 
 #### Remove Plugin Directories
-- [ ] Delete `default-plugins/` directory entirely
-- [ ] Delete `zellij-tile/` directory entirely  
-- [ ] Delete `zellij-tile-utils/` directory entirely
-- [ ] Delete `zellij-server/src/plugins/` directory entirely
+- [ ] Delete `typeypipe/default-plugins/` directory entirely
+- [ ] Delete `typeypipe/zellij-tile/` directory entirely  
+- [ ] Delete `typeypipe/zellij-tile-utils/` directory entirely
+- [ ] Delete `typeypipe/zellij-server/src/plugins/` directory entirely
 - [ ] Verify no plugin-related files remain
 
 #### Remove Plugin Source Files
-- [ ] Remove `zellij-server/src/plugins.rs` (if exists as single file)
-- [ ] Remove any plugin-related modules from `zellij-server/src/lib.rs`
+- [ ] Remove `typeypipe/zellij-server/src/plugins.rs` (if exists as single file)
+- [ ] Remove any plugin-related modules from `typeypipe/zellij-server/src/lib.rs`
 - [ ] Remove plugin imports from all server files
 - [ ] Remove plugin-related test files
 
@@ -84,7 +84,7 @@ This phase focuses on completely removing the plugin system infrastructure, incl
 - [ ] Remove plugin cleanup code in `Drop` implementation
 
 #### Clean Up Screen Code
-- [ ] Remove plugin coordination from `zellij-server/src/screen.rs`
+- [ ] Remove plugin coordination from `typeypipe/zellij-server/src/screen.rs`
 - [ ] Remove plugin pane handling
 - [ ] Remove plugin event forwarding
 - [ ] Remove plugin render coordination
@@ -105,7 +105,7 @@ This phase focuses on completely removing the plugin system infrastructure, incl
 - [ ] Remove plugin permission system
 
 #### Remove Plugin Utilities
-- [ ] Remove plugin-related utilities from `zellij-utils`
+- [ ] Remove plugin-related utilities from `typeypipe/zellij-utils`
 - [ ] Remove plugin API definitions
 - [ ] Remove plugin event types
 - [ ] Remove plugin permission types
@@ -129,7 +129,7 @@ This phase focuses on completely removing the plugin system infrastructure, incl
 ### 7. Remove Plugin Assets and Resources
 
 #### Clean Up Asset Files
-- [ ] Remove plugin WASM files from `zellij-utils/assets/plugins/`
+- [ ] Remove plugin WASM files from `typeypipe/zellij-utils/assets/plugins/`
 - [ ] Remove plugin-related asset loading code
 - [ ] Remove plugin asset installation code
 - [ ] Remove plugin asset validation
@@ -171,21 +171,21 @@ After completing Phase 5:
 
 ## Files Deleted
 
-- [ ] `default-plugins/` (entire directory)
-- [ ] `zellij-tile/` (entire directory)
-- [ ] `zellij-tile-utils/` (entire directory)
-- [ ] `zellij-server/src/plugins/` (entire directory)
+- [ ] `typeypipe/default-plugins/` (entire directory)
+- [ ] `typeypipe/zellij-tile/` (entire directory)
+- [ ] `typeypipe/zellij-tile-utils/` (entire directory)
+- [ ] `typeypipe/zellij-server/src/plugins/` (entire directory)
 - [ ] Plugin WASM assets
 - [ ] Plugin-related documentation
 
 ## Files Modified
 
-- [ ] `Cargo.toml` - Remove plugin dependencies and workspace members
-- [ ] `zellij-server/src/lib.rs` - Remove plugin infrastructure
-- [ ] `zellij-server/src/screen.rs` - Remove plugin coordination
-- [ ] `zellij-server/src/pty.rs` - Remove plugin PTY handling
-- [ ] `zellij-utils/src/` - Remove plugin utilities and types
-- [ ] `zellij-client/src/lib.rs` - Remove plugin client handling
+- [ ] `typeypipe/Cargo.toml` - Remove plugin dependencies and workspace members
+- [ ] `typeypipe/zellij-server/src/lib.rs` - Remove plugin infrastructure
+- [ ] `typeypipe/zellij-server/src/screen.rs` - Remove plugin coordination
+- [ ] `typeypipe/zellij-server/src/pty.rs` - Remove plugin PTY handling
+- [ ] `typeypipe/zellij-utils/src/` - Remove plugin utilities and types
+- [ ] `typeypipe/zellij-client/src/lib.rs` - Remove plugin client handling
 
 ## Files to Review
 

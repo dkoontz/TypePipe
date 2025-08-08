@@ -176,9 +176,10 @@ This document outlines a systematic plan to strip down Zellij from a full termin
 ### Step-by-Step Approach
 
 1. **Start with a Copy**
-   - Copy Zellij to new directory
-   - Rename project to "typey-pipe"
-   - Update Cargo.toml metadata
+   - Copy Zellij from `./zellij/` to `./typeypipe/` directory
+   - Rename project to "typey-pipe" in the copied directory
+   - Update Cargo.toml metadata in `./typeypipe/`
+   - Keep original Zellij source in `./zellij/` unmodified for reference
 
 2. **Remove from Outside In**
    - Delete entire plugin directories first
@@ -200,34 +201,38 @@ This document outlines a systematic plan to strip down Zellij from a full termin
 
 ### Key Files to Modify
 
+**Note: All modifications are done in the `./typeypipe/` directory. The original `./zellij/` directory remains unmodified for reference.**
+
 1. **Entry Points**
-   - `src/main.rs` - Simplify CLI
-   - `src/commands.rs` - Remove complex commands
+   - `typeypipe/src/main.rs` - Simplify CLI
+   - `typeypipe/src/commands.rs` - Remove complex commands
 
 2. **Server Core**
-   - `zellij-server/src/lib.rs` - Strip to essentials
-   - `zellij-server/src/screen.rs` - Single pane + status
-   - `zellij-server/src/pty.rs` - Single shell management
+   - `typeypipe/zellij-server/src/lib.rs` - Strip to essentials
+   - `typeypipe/zellij-server/src/screen.rs` - Single pane + status
+   - `typeypipe/zellij-server/src/pty.rs` - Single shell management
 
 3. **Client Core**
-   - `zellij-client/src/lib.rs` - Basic client
-   - `zellij-client/src/input_handler.rs` - Passthrough input
+   - `typeypipe/zellij-client/src/lib.rs` - Basic client
+   - `typeypipe/zellij-client/src/input_handler.rs` - Passthrough input
 
 4. **Configuration**
-   - `zellij-utils/src/` - Minimal config and data structures
+   - `typeypipe/zellij-utils/src/` - Minimal config and data structures
 
 ### Files to Delete
 
+**Note: All deletions are done in the `./typeypipe/` directory. The original `./zellij/` directory remains unmodified.**
+
 1. **Plugin System**
-   - `default-plugins/` (entire directory)
-   - `zellij-tile/` and `zellij-tile-utils/`
-   - `zellij-server/src/plugins/`
+   - `typeypipe/default-plugins/` (entire directory)
+   - `typeypipe/zellij-tile/` and `typeypipe/zellij-tile-utils/`
+   - `typeypipe/zellij-server/src/plugins/`
 
 2. **Complex Features**
-   - Layout-related files
-   - Session management files
-   - Multi-pane/tab files
-   - Web server files
+   - Layout-related files in `typeypipe/`
+   - Session management files in `typeypipe/`
+   - Multi-pane/tab files in `typeypipe/`
+   - Web server files in `typeypipe/`
 
 ## Expected Outcome
 

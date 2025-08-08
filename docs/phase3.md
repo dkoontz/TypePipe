@@ -13,7 +13,7 @@ This phase focuses on simplifying the client-side architecture by removing sessi
 
 ## Detailed Tasks
 
-### 1. Modify `zellij-client/src/lib.rs`
+### 1. Modify `typeypipe/zellij-client/src/lib.rs`
 
 #### Remove Session Switching
 - [ ] Remove `ClientInstruction::SwitchSession` handling
@@ -66,7 +66,7 @@ This phase focuses on simplifying the client-side architecture by removing sessi
 
 ### 2. Simplify Input Handling
 
-#### Modify `zellij-client/src/input_handler.rs`
+#### Modify `typeypipe/zellij-client/src/input_handler.rs`
 
 ##### Remove Mode Switching
 - [ ] Remove `InputMode` enum usage (except Normal)
@@ -181,18 +181,18 @@ After completing Phase 3:
 
 ## Files Modified
 
-- [ ] `zellij-client/src/lib.rs` - Simplified client architecture
-- [ ] `zellij-client/src/input_handler.rs` - Basic input passthrough
-- [ ] `zellij-client/src/stdin_handler.rs` - Simplified stdin processing
-- [ ] `zellij-utils/src/ipc.rs` - Simplified message types
-- [ ] `zellij-utils/src/input/` - Removed complex input processing
+- [ ] `typeypipe/zellij-client/src/lib.rs` - Simplified client architecture
+- [ ] `typeypipe/zellij-client/src/input_handler.rs` - Basic input passthrough
+- [ ] `typeypipe/zellij-client/src/stdin_handler.rs` - Simplified stdin processing
+- [ ] `typeypipe/zellij-utils/src/ipc.rs` - Simplified message types
+- [ ] `typeypipe/zellij-utils/src/input/` - Removed complex input processing
 
 ## Files to Review
 
 Before proceeding to Phase 4:
-- [ ] `zellij-client/src/lib.rs`
-- [ ] `zellij-client/src/input_handler.rs`
-- [ ] `zellij-client/src/stdin_handler.rs`
+- [ ] `typeypipe/zellij-client/src/lib.rs`
+- [ ] `typeypipe/zellij-client/src/input_handler.rs`
+- [ ] `typeypipe/zellij-client/src/stdin_handler.rs`
 - [ ] Client-server message definitions
 
 ## Success Criteria

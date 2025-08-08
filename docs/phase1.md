@@ -11,7 +11,7 @@ This phase focuses on stripping down the command-line interface and main entry p
 
 ## Detailed Tasks
 
-### 1. Modify `src/main.rs`
+### 1. Modify `typeypipe/src/main.rs`
 
 #### Remove Session Management Commands
 - [x] Remove `Sessions::ListSessions` handling (lines ~181-187)
@@ -42,7 +42,7 @@ This phase focuses on stripping down the command-line interface and main entry p
 - [x] Simplify to: parse basic args → start client
 - [x] Remove server path handling (lines ~205-206)
 
-### 2. Simplify `src/commands.rs`
+### 2. Simplify `typeypipe/src/commands.rs`
 
 #### Remove Session Management Functions
 - [x] Remove `list_sessions()` function
@@ -75,7 +75,7 @@ This phase focuses on stripping down the command-line interface and main entry p
 
 ### 3. Update CLI Argument Structure
 
-#### Modify `zellij-utils/src/cli.rs`
+#### Modify `typeypipe/zellij-utils/src/cli.rs`
 - [x] Remove session-related CLI arguments
 - [x] Remove layout-related CLI arguments
 - [x] Remove plugin-related CLI arguments
@@ -92,14 +92,14 @@ This phase focuses on stripping down the command-line interface and main entry p
 
 ### 4. Clean Up Imports and Dependencies
 
-#### Remove Unused Imports in `src/main.rs`
+#### Remove Unused Imports in `typeypipe/src/main.rs`
 - [x] Remove session management imports
 - [x] Remove layout imports
 - [x] Remove plugin imports
 - [x] Remove web server imports
 - [x] Keep only client startup imports
 
-#### Remove Unused Imports in `src/commands.rs`
+#### Remove Unused Imports in `typeypipe/src/commands.rs`
 - [x] Remove session management imports
 - [x] Remove layout conversion imports
 - [x] Remove web server imports
@@ -119,16 +119,16 @@ After completing Phase 1:
 
 ## Files Modified
 
-- [x] `src/main.rs` - Simplified main entry point
-- [x] `src/commands.rs` - Removed complex command handling
-- [x] `zellij-utils/src/cli.rs` - Simplified CLI arguments
+- [x] `typeypipe/src/main.rs` - Simplified main entry point
+- [x] `typeypipe/src/commands.rs` - Removed complex command handling
+- [x] `typeypipe/zellij-utils/src/cli.rs` - Simplified CLI arguments
 
 ## Files to Review
 
 Before proceeding to Phase 2, ensure these files compile and function:
-- [x] `src/main.rs`
-- [x] `src/commands.rs`
-- [x] `zellij-utils/src/cli.rs`
+- [x] `typeypipe/src/main.rs`
+- [x] `typeypipe/src/commands.rs`
+- [x] `typeypipe/zellij-utils/src/cli.rs`
 
 ## Success Criteria
 
@@ -152,21 +152,21 @@ Phase 1 is complete when:
 
 ### Completed Tasks
 
-**Main Entry Point Simplification (`src/main.rs`)**
+**Main Entry Point Simplification (`typeypipe/src/main.rs`)**
 - Removed all session management commands (ListSessions, KillAllSessions, KillSession, DeleteAllSessions, DeleteSession, Action, Run, Plugin, Edit)
 - Removed layout and configuration commands (ConvertConfig, ConvertLayout, ConvertTheme, layout parameter handling, new_session_with_layout)
 - Removed plugin and web server commands (Pipe, Web command handling)
 - Simplified main function to basic client startup path: parse args → start client or server
 - Reduced from ~330 lines to ~30 lines
 
-**Command Handling Simplification (`src/commands.rs`)**
+**Command Handling Simplification (`typeypipe/src/commands.rs`)**
 - Removed all session management functions (kill_all_sessions, delete_all_sessions, kill_session, delete_session, send_action_to_session, list_aliases)
 - Removed layout conversion functions (convert_old_config_file, convert_old_layout_file, convert_old_theme_file)
 - Removed web server functions (start_web_server, stop_web_server, create_auth_token, revoke_auth_token, revoke_all_auth_tokens, list_auth_tokens, web_server_status)
 - Simplified start_client function to basic shell wrapper startup
 - Kept essential functions: start_server, start_client, generate_unique_session_name_or_exit
 
-**CLI Structure Simplification (`zellij-utils/src/cli.rs`)**
+**CLI Structure Simplification (`typeypipe/zellij-utils/src/cli.rs`)**
 - Removed complex CLI arguments: max_panes, data_dir, layout, new_session_with_layout
 - Removed Command enum and all subcommands (Sessions, Web, Options, Setup)
 - Removed WebCli, SessionCommand, Sessions, and CliAction enums
@@ -209,19 +209,19 @@ The developer has successfully completed Phase 1 requirements. The CLI has been 
 
 #### ✅ Requirements Met
 
-1. **Main Entry Point Simplification (`zellij/src/main.rs`)**
+1. **Main Entry Point Simplification (`typeypipe/src/main.rs`)**
    - Successfully reduced from ~330 lines to 23 lines
    - Removed all session management, layout, plugin, and web server command handling
    - Simplified to basic client/server startup path
    - Clean, minimal implementation
 
-2. **Command Handling Simplification (`zellij/src/commands.rs`)**
+2. **Command Handling Simplification (`typeypipe/src/commands.rs`)**
    - Removed all session management functions as required
    - Removed layout conversion functions
    - Removed web server functions
    - Kept essential functions: `start_server`, `start_client`, `generate_unique_session_name_or_exit`
 
-3. **CLI Structure Simplification (`zellij/zellij-utils/src/cli.rs`)**
+3. **CLI Structure Simplification (`typeypipe/zellij-utils/src/cli.rs`)**
    - Successfully removed complex CLI arguments and command enums
    - Application name changed from "zellij" to "typey-pipe" ✅
    - Simplified to basic options: server, session, config, config_dir, debug
@@ -255,22 +255,22 @@ The developer has successfully completed Phase 1 requirements. The CLI has been 
 ### ✅ Issues Addressed
 
 **Priority: Low (Cleanup) - COMPLETED**
-1. ✅ Removed unused imports in `zellij-utils/src/input/actions.rs`:
+1. ✅ Removed unused imports in `typeypipe/zellij-utils/src/input/actions.rs`:
    - `Layout`, `PluginAlias`, `RunPlugin`, `RunPluginLocation`
    - `find_default_config_dir`, `get_layout_dir`
    - `ConfigError`, `KdlError`
    - `NamedSource`, `Report`
    - `uuid::Uuid`
 
-2. ✅ Removed unused imports in `zellij-utils/src/setup.rs`:
+2. ✅ Removed unused imports in `typeypipe/zellij-utils/src/setup.rs`:
    - `process`
 
-3. ✅ Removed dead code in `src/commands.rs`:
+3. ✅ Removed dead code in `typeypipe/src/commands.rs`:
    - `reload_config_from_disk` function (was only used by removed web client)
    - `get_config_options_from_cli_args` function (unused)
 
 4. ✅ Fixed minor syntax issues:
-   - Removed trailing semicolon in `zellij-utils/src/setup.rs:411`
+   - Removed trailing semicolon in `typeypipe/zellij-utils/src/setup.rs:411`
    - Prefixed unused variables with underscore: `_cli_args`
 
 ### ✅ Success Criteria Verification

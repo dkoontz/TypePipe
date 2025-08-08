@@ -1473,7 +1473,7 @@ fn init_session(
     let to_background_jobs = SenderWithContext::new(to_background_jobs);
 
     // Determine and initialize the data directory
-    let data_dir = get_default_data_dir();
+    let data_dir = opts.data_dir.unwrap_or_else(get_default_data_dir);
 
     let capabilities = PluginCapabilities {
         arrow_fonts: config_options.simplified_ui.unwrap_or_default(),
@@ -1542,7 +1542,7 @@ fn init_session(
                 Some(&to_background_jobs),
                 Some(os_input.clone()),
             );
-            let max_panes = None; // Removed max_panes limit for shell wrapper
+            let max_panes = opts.max_panes;
 
             let client_attributes_clone = client_attributes.clone();
             let debug = opts.debug;

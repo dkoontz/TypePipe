@@ -201,10 +201,10 @@ After completing Phase 7:
 
 ## Files Modified
 
-- [ ] `Cargo.toml` - Removed unused dependencies and workspace members
-- [ ] `zellij-client/Cargo.toml` - Cleaned up client dependencies
-- [ ] `zellij-server/Cargo.toml` - Cleaned up server dependencies
-- [ ] `zellij-utils/Cargo.toml` - Cleaned up utils dependencies
+- [ ] `typeypipe/Cargo.toml` - Removed unused dependencies and workspace members
+- [ ] `typeypipe/zellij-client/Cargo.toml` - Cleaned up client dependencies
+- [ ] `typeypipe/zellij-server/Cargo.toml` - Cleaned up server dependencies
+- [ ] `typeypipe/zellij-utils/Cargo.toml` - Cleaned up utils dependencies
 - [ ] Build scripts and CI configuration
 - [ ] Package metadata and documentation
 

@@ -15,7 +15,13 @@ pub fn convert_old_yaml_files(opts: &CliArgs) {
 
     let mut layout_files_to_convert = vec![];
     let mut theme_files_to_convert = vec![];
-    // Layout field removed for shell wrapper mode
+    if let Some(layout) = opts.layout.as_ref() {
+        if layout.extension().map(|s| s.to_string_lossy().to_string()) == Some("yaml".into()) {
+            if layout.exists() {
+                layout_files_to_convert.push((layout.clone(), true));
+            }
+        }
+    }
     layout_files_to_convert.dedup();
     if let Some(layout_dir) = layout_dir {
         if let Ok(files) = std::fs::read_dir(layout_dir) {

@@ -16,7 +16,7 @@ This phase focuses on drastically simplifying the configuration system by removi
 
 ### 1. Simplify Configuration Structure
 
-#### Modify `zellij-utils/src/input/config.rs`
+#### Modify `typeypipe/zellij-utils/src/input/config.rs`
 - [ ] Remove `keybinds: Keybinds` field from `Config`
 - [ ] Remove `themes: Option<Themes>` field
 - [ ] Remove `theme: Option<String>` field
@@ -47,7 +47,7 @@ This phase focuses on drastically simplifying the configuration system by removi
 ### 2. Remove Keybinding System
 
 #### Delete Keybinding Infrastructure
-- [ ] Remove `zellij-utils/src/input/keybinds.rs` file
+- [ ] Remove `typeypipe/zellij-utils/src/input/keybinds.rs` file
 - [ ] Remove `Keybinds` struct definition
 - [ ] Remove `KeybindConfig` struct
 - [ ] Remove keybinding parsing logic
@@ -71,7 +71,7 @@ This phase focuses on drastically simplifying the configuration system by removi
 ### 3. Remove Theme System
 
 #### Delete Theme Infrastructure
-- [ ] Remove theme-related files from `zellij-utils/src/`
+- [ ] Remove theme-related files from `typeypipe/zellij-utils/src/`
 - [ ] Remove `Palette` struct complexity
 - [ ] Remove `PaletteColor` enum
 - [ ] Remove theme parsing logic
@@ -95,7 +95,7 @@ This phase focuses on drastically simplifying the configuration system by removi
 ### 4. Remove Layout Configuration
 
 #### Delete Layout System
-- [ ] Remove `zellij-utils/src/input/layout/` directory
+- [ ] Remove `typeypipe/zellij-utils/src/input/layout/` directory
 - [ ] Remove `Layout` struct and related types
 - [ ] Remove layout parsing (KDL format)
 - [ ] Remove layout validation
@@ -197,26 +197,26 @@ After completing Phase 6:
 
 ## Files Deleted
 
-- [ ] `zellij-utils/src/input/keybinds.rs`
-- [ ] `zellij-utils/src/input/layout/` (entire directory)
+- [ ] `typeypipe/zellij-utils/src/input/keybinds.rs`
+- [ ] `typeypipe/zellij-utils/src/input/layout/` (entire directory)
 - [ ] Theme-related configuration files
 - [ ] Complex configuration examples
 - [ ] Configuration migration utilities
 
 ## Files Modified
 
-- [ ] `zellij-utils/src/input/config.rs` - Simplified configuration
-- [ ] `zellij-utils/src/input/options.rs` - Reduced options
-- [ ] `zellij-utils/src/cli.rs` - Simplified CLI arguments
-- [ ] `src/main.rs` - Simplified configuration handling
-- [ ] `zellij-client/src/lib.rs` - Removed configuration complexity
-- [ ] `zellij-server/src/lib.rs` - Removed configuration complexity
+- [ ] `typeypipe/zellij-utils/src/input/config.rs` - Simplified configuration
+- [ ] `typeypipe/zellij-utils/src/input/options.rs` - Reduced options
+- [ ] `typeypipe/zellij-utils/src/cli.rs` - Simplified CLI arguments
+- [ ] `typeypipe/src/main.rs` - Simplified configuration handling
+- [ ] `typeypipe/zellij-client/src/lib.rs` - Removed configuration complexity
+- [ ] `typeypipe/zellij-server/src/lib.rs` - Removed configuration complexity
 
 ## Files to Review
 
 Before proceeding to Phase 7:
-- [ ] `zellij-utils/src/input/config.rs`
-- [ ] `zellij-utils/src/input/options.rs`
+- [ ] `typeypipe/zellij-utils/src/input/config.rs`
+- [ ] `typeypipe/zellij-utils/src/input/options.rs`
 - [ ] Configuration loading and parsing code
 - [ ] Default configuration generation
 

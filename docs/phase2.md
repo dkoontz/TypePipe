@@ -13,7 +13,7 @@ This phase focuses on simplifying the server-side architecture by removing multi
 
 ## Detailed Tasks
 
-### 1. Simplify `zellij-server/src/lib.rs`
+### 1. Simplify `typeypipe/zellij-server/src/lib.rs`
 
 #### Remove Multi-Client Support
 - [ ] Modify `SessionState` struct to support single client only
@@ -59,7 +59,7 @@ This phase focuses on simplifying the server-side architecture by removing multi
 - [ ] Remove configuration change instructions
 - [ ] Simplify to: client connect, render, client disconnect, exit
 
-### 2. Modify `zellij-server/src/screen.rs`
+### 2. Modify `typeypipe/zellij-server/src/screen.rs`
 
 #### Remove Tab Management
 - [ ] Remove `tabs: BTreeMap<usize, Tab>` field from `Screen`
@@ -111,7 +111,7 @@ This phase focuses on simplifying the server-side architecture by removing multi
 
 ### 3. Simplify PTY Management
 
-#### Modify `zellij-server/src/pty.rs`
+#### Modify `typeypipe/zellij-server/src/pty.rs`
 - [ ] Remove `PtyInstruction::SpawnTerminal` multi-pane support
 - [ ] Remove `PtyInstruction::NewTab`
 - [ ] Remove `PtyInstruction::ClosePane`
@@ -181,18 +181,18 @@ After completing Phase 2:
 
 ## Files Modified
 
-- [ ] `zellij-server/src/lib.rs` - Simplified server architecture
-- [ ] `zellij-server/src/screen.rs` - Single pane screen management
-- [ ] `zellij-server/src/pty.rs` - Single shell PTY management
-- [ ] `zellij-server/src/route.rs` - Simplified message routing
-- [ ] `zellij-utils/src/ipc.rs` - Simplified message types
+- [ ] `typeypipe/zellij-server/src/lib.rs` - Simplified server architecture
+- [ ] `typeypipe/zellij-server/src/screen.rs` - Single pane screen management
+- [ ] `typeypipe/zellij-server/src/pty.rs` - Single shell PTY management
+- [ ] `typeypipe/zellij-server/src/route.rs` - Simplified message routing
+- [ ] `typeypipe/zellij-utils/src/ipc.rs` - Simplified message types
 
 ## Files to Review
 
 Before proceeding to Phase 3:
-- [ ] `zellij-server/src/lib.rs`
-- [ ] `zellij-server/src/screen.rs`
-- [ ] `zellij-server/src/pty.rs`
+- [ ] `typeypipe/zellij-server/src/lib.rs`
+- [ ] `typeypipe/zellij-server/src/screen.rs`
+- [ ] `typeypipe/zellij-server/src/pty.rs`
 - [ ] Message type definitions
 
 ## Success Criteria

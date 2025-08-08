@@ -1,5 +1,5 @@
 //! Handles cli and configuration options
-
+use crate::cli::Command;
 use crate::data::{InputMode, WebSharing};
 use clap::{ArgEnum, Args};
 use serde::{Deserialize, Serialize};
@@ -488,8 +488,12 @@ impl Options {
         }
     }
 
-    pub fn from_cli(&self, _other: Option<()>) -> Options {
-        self.to_owned()
+    pub fn from_cli(&self, other: Option<Command>) -> Options {
+        if let Some(Command::Options(options)) = other {
+            Options::merge_from_cli(self, options.into())
+        } else {
+            self.to_owned()
+        }
     }
 }
 
