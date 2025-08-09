@@ -1,8 +1,12 @@
 //! Definitions and helpers for sending and receiving messages between threads.
 
 use crate::{
-    background_jobs::BackgroundJob, os_input_output::ServerOsApi, plugins::PluginInstruction,
-    pty::PtyInstruction, pty_writer::PtyWriteInstruction, screen::ScreenInstruction,
+    background_jobs::BackgroundJob,
+    os_input_output::ServerOsApi,
+    plugins::PluginInstruction,
+    pty::PtyInstruction, 
+    pty_writer::PtyWriteInstruction,
+    screen::ScreenInstruction,
     ServerInstruction,
 };
 use zellij_utils::errors::prelude::*;
@@ -59,23 +63,7 @@ impl ThreadSenders {
         }
     }
 
-    pub fn send_to_plugin(&self, instruction: PluginInstruction) -> Result<()> {
-        if self.should_silently_fail {
-            let _ = self
-                .to_plugin
-                .as_ref()
-                .map(|sender| sender.send(instruction))
-                .unwrap_or_else(|| Ok(()));
-            Ok(())
-        } else {
-            self.to_plugin
-                .as_ref()
-                .context("failed to get plugin sender")?
-                .send(instruction)
-                .to_anyhow()
-                .context("failed to send message to plugin")
-        }
-    }
+
 
     pub fn send_to_server(&self, instruction: ServerInstruction) -> Result<()> {
         if self.should_silently_fail {
@@ -94,6 +82,26 @@ impl ThreadSenders {
                 .context("failed to send message to server")
         }
     }
+
+
+    pub fn send_to_plugin(&self, instruction: PluginInstruction) -> Result<()> {
+        if self.should_silently_fail {
+            let _ = self
+                .to_plugin
+                .as_ref()
+                .map(|sender| sender.send(instruction))
+                .unwrap_or_else(|| Ok(()));
+            Ok(())
+        } else {
+            self.to_plugin
+                .as_ref()
+                .context("failed to get plugin sender")?
+                .send(instruction)
+                .to_anyhow()
+                .context("failed to send message to plugin")
+        }
+    }
+
     pub fn send_to_pty_writer(&self, instruction: PtyWriteInstruction) -> Result<()> {
         if self.should_silently_fail {
             let _ = self
@@ -111,6 +119,7 @@ impl ThreadSenders {
                 .context("failed to send message to pty writer")
         }
     }
+
     pub fn send_to_background_jobs(&self, background_job: BackgroundJob) -> Result<()> {
         if self.should_silently_fail {
             let _ = self
@@ -135,20 +144,7 @@ impl ThreadSenders {
         self.should_silently_fail = true;
         self
     }
-    #[allow(unused)]
-    pub fn replace_to_pty_writer(
-        &mut self,
-        new_pty_writer: SenderWithContext<PtyWriteInstruction>,
-    ) {
-        // this is mostly used for the tests, see struct
-        self.to_pty_writer.replace(new_pty_writer);
-    }
 
-    #[allow(unused)]
-    pub fn replace_to_plugin(&mut self, new_to_plugin: SenderWithContext<PluginInstruction>) {
-        // this is mostly used for the tests, see struct
-        self.to_plugin.replace(new_to_plugin);
-    }
 }
 
 /// A container for a receiver, OS input and the senders to a given thread

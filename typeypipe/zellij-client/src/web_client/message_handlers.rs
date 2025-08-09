@@ -1,11 +1,11 @@
-use crate::input_handler::from_termwiz;
 use crate::keyboard_parser::KittyKeyboardParser;
 use crate::os_input_output::ClientOsApi;
 use crate::web_client::types::BRACKETED_PASTE_END;
 use crate::web_client::types::BRACKETED_PASTE_START;
 
 use zellij_utils::{
-    input::{actions::Action, cast_termwiz_key, mouse::MouseEvent},
+    data::{BareKey, KeyWithModifier},
+    input::{cast_termwiz_key, mouse::MouseEvent},
     ipc::ClientToServerMsg,
 };
 
@@ -79,11 +79,7 @@ pub fn parse_stdin(
     if !explicitly_disable_kitty_keyboard_protocol {
         match KittyKeyboardParser::new().parse(&buf) {
             Some(key_with_modifier) => {
-                os_input.send_to_server(ClientToServerMsg::Key(
-                    key_with_modifier.clone(),
-                    buf.to_vec(),
-                    true,
-                ));
+                os_input.send_to_server(ClientToServerMsg::Key(key_with_modifier, buf.to_vec(), true));
                 return;
             },
             None => {},
@@ -105,29 +101,19 @@ pub fn parse_stdin(
         match input_event {
             InputEvent::Key(key_event) => {
                 let key = cast_termwiz_key(key_event.clone(), &buf, None);
-                os_input.send_to_server(ClientToServerMsg::Key(key.clone(), buf.to_vec(), false));
+                os_input.send_to_server(ClientToServerMsg::Key(key, buf.to_vec(), false));
             },
-            InputEvent::Mouse(mouse_event) => {
-                let mouse_event = from_termwiz(mouse_old_event, mouse_event);
-                let action = Action::MouseEvent(mouse_event);
-                os_input.send_to_server(ClientToServerMsg::Action(action, None, None));
+            InputEvent::Mouse(_mouse_event) => {
+                // Simplified: mouse events not supported
             },
             InputEvent::Paste(pasted_text) => {
-                os_input.send_to_server(ClientToServerMsg::Action(
-                    Action::Write(None, BRACKETED_PASTE_START.to_vec(), false),
-                    None,
-                    None,
-                ));
-                os_input.send_to_server(ClientToServerMsg::Action(
-                    Action::Write(None, pasted_text.as_bytes().to_vec(), false),
-                    None,
-                    None,
-                ));
-                os_input.send_to_server(ClientToServerMsg::Action(
-                    Action::Write(None, BRACKETED_PASTE_END.to_vec(), false),
-                    None,
-                    None,
-                ));
+                // Simplified: send paste as raw key bytes
+                let mut paste_bytes = BRACKETED_PASTE_START.to_vec();
+                paste_bytes.extend_from_slice(pasted_text.as_bytes());
+                paste_bytes.extend_from_slice(&BRACKETED_PASTE_END);
+                // Create a dummy KeyWithModifier for paste
+                let paste_key = KeyWithModifier::new(BareKey::Char(' ')).with_ctrl_modifier();
+                os_input.send_to_server(ClientToServerMsg::Key(paste_key, paste_bytes, false));
             },
             _ => {
                 log::error!("Unsupported event: {:#?}", input_event);
