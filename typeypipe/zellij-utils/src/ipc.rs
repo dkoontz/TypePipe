@@ -1,10 +1,10 @@
 //! IPC stuff for starting to split things into a client and server model.
 use crate::{
     cli::CliArgs,
-    data::{ClientId, ConnectToSession, KeyWithModifier, Style},
+    data::{Action, ClientId, ConnectToSession, KeyWithModifier, Layout, PluginAliases, Style},
     errors::{get_current_ctx, prelude::*, ErrorContext},
     input::config::Config,
-    input::{actions::Action, layout::Layout, options::Options, plugins::PluginAliases},
+    input::options::Options,
     pane_size::{Size, SizeInPixels},
 };
 use interprocess::local_socket::LocalSocketStream;

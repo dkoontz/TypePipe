@@ -4,8 +4,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use crate::data::FloatingPaneCoordinates;
-use crate::input::layout::{SplitDirection, SplitSize};
+use crate::data::{FloatingPaneCoordinates, SplitDirection, SplitSize};
 use crate::position::Position;
 
 /// Contains the position and size of a [`Pane`], or more generally of any terminal, measured

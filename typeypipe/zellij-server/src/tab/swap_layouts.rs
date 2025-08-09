@@ -49,9 +49,9 @@ impl SwapLayouts {
         base_swap_floating_layout
             .insert(LayoutConstraint::ExactPanes(floating_panes_count), layout.1);
         self.swap_tiled_layouts
-            .insert(0, (base_swap_tiled_layout, Some("BASE".into())));
+            .insert(0, SwapTiledLayout(base_swap_tiled_layout, Some("BASE".into())));
         self.swap_floating_layouts
-            .insert(0, (base_swap_floating_layout, Some("BASE".into())));
+            .insert(0, SwapFloatingLayout(base_swap_floating_layout, Some("BASE".into())));
         self.current_tiled_layout_position = 0;
         self.current_floating_layout_position = 0;
     }

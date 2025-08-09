@@ -1,7 +1,7 @@
-use crate::data::Styling;
+
 use miette::{Diagnostic, LabeledSpan, NamedSource, SourceCode};
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+
 use std::fs::File;
 use std::io::{self, Read};
 use std::path::PathBuf;
@@ -9,12 +9,7 @@ use thiserror::Error;
 
 use std::convert::TryFrom;
 
-use super::keybinds::Keybinds;
-use super::layout::RunPluginOrAlias;
 use super::options::Options;
-use super::plugins::{PluginAliases, PluginsConfigError};
-use super::theme::{Themes, UiConfig};
-use super::web_client::WebClientConfig;
 use crate::cli::CliArgs;
 use crate::envs::EnvironmentVariables;
 use crate::{home, setup};
@@ -26,14 +21,22 @@ type ConfigResult = Result<Config, ConfigError>;
 /// Main configuration.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct Config {
-    pub keybinds: Keybinds,
     pub options: Options,
-    pub themes: Themes,
-    pub plugins: PluginAliases,
-    pub ui: UiConfig,
-    pub env: EnvironmentVariables,
-    pub background_plugins: HashSet<RunPluginOrAlias>,
-    pub web_client: WebClientConfig,
+    // Stub fields for removed functionality - kept to avoid compilation errors
+    pub themes: crate::data::Themes,
+    pub keybinds: crate::input::keybinds::Keybinds,
+}
+
+impl std::fmt::Display for Config {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Typey Pipe Configuration")
+    }
+}
+
+impl Config {
+    pub fn to_string(&self, _clear_defaults: bool) -> String {
+        "Typey Pipe Configuration".to_string()
+    }
 }
 
 #[derive(Error, Debug)]
@@ -98,8 +101,7 @@ pub enum ConfigError {
     #[error("FromUtf8Error: {0}")]
     FromUtf8(#[from] std::string::FromUtf8Error),
     // Plugins have a semantic error, usually trying to parse two of the same tag
-    #[error("PluginsError: {0}")]
-    PluginsError(#[from] PluginsConfigError),
+
     #[error("{0}")]
     ConversionError(#[from] ConversionError),
     #[error("{0}")]
@@ -164,12 +166,52 @@ impl TryFrom<&CliArgs> for Config {
 }
 
 impl Config {
-    pub fn theme_config(&self, theme_name: Option<&String>) -> Option<Styling> {
-        match &theme_name {
-            Some(theme_name) => self.themes.get_theme(theme_name).map(|theme| theme.palette),
-            None => self.themes.get_theme("default").map(|theme| theme.palette),
+    pub fn from_kdl(
+        kdl_config: &str,
+        base_config: Option<Config>,
+    ) -> Result<Config, ConfigError> {
+        let mut config = base_config.unwrap_or_default();
+        
+        // Simplified KDL parsing for Typey Pipe - only handle basic options
+        // Parse line by line for simple key-value pairs
+        for line in kdl_config.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with("//") {
+                continue;
+            }
+            
+            // Simple parsing for basic options
+            if line.starts_with("on_force_close") {
+                if line.contains("\"quit\"") {
+                    config.options.on_force_close = Some(crate::input::options::OnForceClose::Quit);
+                } else {
+                    config.options.on_force_close = Some(crate::input::options::OnForceClose::Detach);
+                }
+            } else if line.starts_with("scroll_buffer_size") {
+                if let Some(value_str) = line.split_whitespace().nth(1) {
+                    if let Ok(value) = value_str.parse::<usize>() {
+                        config.options.scroll_buffer_size = Some(value);
+                    }
+                }
+            } else if line.starts_with("status_bar ") {
+                if line.contains("true") {
+                    config.options.status_bar = Some(true);
+                } else if line.contains("false") {
+                    config.options.status_bar = Some(false);
+                }
+            } else if line.starts_with("status_bar_refresh_interval") {
+                if let Some(value_str) = line.split_whitespace().nth(1) {
+                    if let Ok(value) = value_str.parse::<u64>() {
+                        config.options.status_bar_refresh_interval = Some(value);
+                    }
+                }
+            }
+            // Ignore other complex configuration options that we've removed
         }
+        
+        Ok(config)
     }
+
     /// Gets default configuration from assets
     pub fn from_default_assets() -> ConfigResult {
         let cfg = String::from_utf8(setup::DEFAULT_CONFIG.to_vec())?;
@@ -228,11 +270,6 @@ impl Config {
     }
     pub fn merge(&mut self, other: Config) -> Result<(), ConfigError> {
         self.options = self.options.merge(other.options);
-        self.keybinds.merge(other.keybinds.clone());
-        self.themes = self.themes.merge(other.themes);
-        self.plugins.merge(other.plugins);
-        self.ui = self.ui.merge(other.ui);
-        self.env = self.env.merge(other.env);
         Ok(())
     }
     pub fn config_file_path(opts: &CliArgs) -> Option<PathBuf> {
@@ -483,11 +520,7 @@ where
 #[cfg(test)]
 mod config_test {
     use super::*;
-    use crate::data::{InputMode, Palette, PaletteColor, StyleDeclaration, Styling};
-    use crate::input::layout::RunPlugin;
-    use crate::input::options::{Clipboard, OnForceClose};
-    use crate::input::theme::{FrameConfig, Theme, Themes, UiConfig};
-    use std::collections::{BTreeMap, HashMap};
+    use crate::input::options::OnForceClose;
     use std::io::Write;
     use tempfile::tempdir;
 
@@ -499,12 +532,9 @@ mod config_test {
             config: Some(arbitrary_config),
             ..Default::default()
         };
-        println!("OPTS= {:?}", opts);
         let result = Config::try_from(&opts);
         assert!(result.is_err());
     }
-
-
 
     #[test]
     fn try_from_cli_args_with_config_dir() {
@@ -512,7 +542,7 @@ mod config_test {
         let tmp = tempdir().unwrap();
         File::create(tmp.path().join(DEFAULT_CONFIG_FILE_NAME))
             .unwrap()
-            .write_all(b"keybinds: invalid\n")
+            .write_all(b"invalid_option: invalid\n")
             .unwrap();
         opts.config_dir = Some(tmp.path().to_path_buf());
         let result = Config::try_from(&opts);
@@ -536,84 +566,14 @@ mod config_test {
     }
 
     #[test]
-    fn can_define_options_in_configfile() {
+    fn can_define_simplified_options_in_configfile() {
         let config_contents = r#"
-            simplified_ui true
-            theme "my cool theme"
-            default_mode "locked"
-            default_shell "/path/to/my/shell"
-            default_cwd "/path"
-            default_layout "/path/to/my/layout.kdl"
-            layout_dir "/path/to/my/layout-dir"
-            theme_dir "/path/to/my/theme-dir"
-            mouse_mode false
-            pane_frames false
-            mirror_session true
             on_force_close "quit"
             scroll_buffer_size 100000
-            copy_command "/path/to/my/copy-command"
-            copy_clipboard "primary"
-            copy_on_select false
-            scrollback_editor "/path/to/my/scrollback-editor"
-            session_name "my awesome session"
-            attach_to_session true
+            status_bar true
+            status_bar_refresh_interval 2
         "#;
         let config = Config::from_kdl(config_contents, None).unwrap();
-        assert_eq!(
-            config.options.simplified_ui,
-            Some(true),
-            "Option set in config"
-        );
-        assert_eq!(
-            config.options.theme,
-            Some(String::from("my cool theme")),
-            "Option set in config"
-        );
-        assert_eq!(
-            config.options.default_mode,
-            Some(InputMode::Locked),
-            "Option set in config"
-        );
-        assert_eq!(
-            config.options.default_shell,
-            Some(PathBuf::from("/path/to/my/shell")),
-            "Option set in config"
-        );
-        assert_eq!(
-            config.options.default_cwd,
-            Some(PathBuf::from("/path")),
-            "Option set in config"
-        );
-        assert_eq!(
-            config.options.default_layout,
-            Some(PathBuf::from("/path/to/my/layout.kdl")),
-            "Option set in config"
-        );
-        assert_eq!(
-            config.options.layout_dir,
-            Some(PathBuf::from("/path/to/my/layout-dir")),
-            "Option set in config"
-        );
-        assert_eq!(
-            config.options.theme_dir,
-            Some(PathBuf::from("/path/to/my/theme-dir")),
-            "Option set in config"
-        );
-        assert_eq!(
-            config.options.mouse_mode,
-            Some(false),
-            "Option set in config"
-        );
-        assert_eq!(
-            config.options.pane_frames,
-            Some(false),
-            "Option set in config"
-        );
-        assert_eq!(
-            config.options.mirror_session,
-            Some(true),
-            "Option set in config"
-        );
         assert_eq!(
             config.options.on_force_close,
             Some(OnForceClose::Quit),
@@ -625,599 +585,14 @@ mod config_test {
             "Option set in config"
         );
         assert_eq!(
-            config.options.copy_command,
-            Some(String::from("/path/to/my/copy-command")),
-            "Option set in config"
-        );
-        assert_eq!(
-            config.options.copy_clipboard,
-            Some(Clipboard::Primary),
-            "Option set in config"
-        );
-        assert_eq!(
-            config.options.copy_on_select,
-            Some(false),
-            "Option set in config"
-        );
-        assert_eq!(
-            config.options.scrollback_editor,
-            Some(PathBuf::from("/path/to/my/scrollback-editor")),
-            "Option set in config"
-        );
-        assert_eq!(
-            config.options.session_name,
-            Some(String::from("my awesome session")),
-            "Option set in config"
-        );
-        assert_eq!(
-            config.options.attach_to_session,
+            config.options.status_bar,
             Some(true),
             "Option set in config"
         );
-    }
-
-    #[test]
-    fn can_define_themes_in_configfile() {
-        let config_contents = r#"
-            themes {
-                dracula {
-                    fg 248 248 242
-                    bg 40 42 54
-                    red 255 85 85
-                    green 80 250 123
-                    yellow 241 250 140
-                    blue 98 114 164
-                    magenta 255 121 198
-                    orange 255 184 108
-                    cyan 139 233 253
-                    black 0 0 0
-                    white 255 255 255
-                }
-            }
-        "#;
-        let config = Config::from_kdl(config_contents, None).unwrap();
-        let mut expected_themes = HashMap::new();
-        expected_themes.insert(
-            "dracula".into(),
-            Theme {
-                palette: Palette {
-                    fg: PaletteColor::Rgb((248, 248, 242)),
-                    bg: PaletteColor::Rgb((40, 42, 54)),
-                    red: PaletteColor::Rgb((255, 85, 85)),
-                    green: PaletteColor::Rgb((80, 250, 123)),
-                    yellow: PaletteColor::Rgb((241, 250, 140)),
-                    blue: PaletteColor::Rgb((98, 114, 164)),
-                    magenta: PaletteColor::Rgb((255, 121, 198)),
-                    orange: PaletteColor::Rgb((255, 184, 108)),
-                    cyan: PaletteColor::Rgb((139, 233, 253)),
-                    black: PaletteColor::Rgb((0, 0, 0)),
-                    white: PaletteColor::Rgb((255, 255, 255)),
-                    ..Default::default()
-                }
-                .into(),
-                sourced_from_external_file: false,
-            },
-        );
-        let expected_themes = Themes::from_data(expected_themes);
-        assert_eq!(config.themes, expected_themes, "Theme defined in config");
-    }
-
-    #[test]
-    fn can_define_multiple_themes_including_hex_themes_in_configfile() {
-        let config_contents = r##"
-            themes {
-                dracula {
-                    fg 248 248 242
-                    bg 40 42 54
-                    red 255 85 85
-                    green 80 250 123
-                    yellow 241 250 140
-                    blue 98 114 164
-                    magenta 255 121 198
-                    orange 255 184 108
-                    cyan 139 233 253
-                    black 0 0 0
-                    white 255 255 255
-                }
-                nord {
-                    fg "#D8DEE9"
-                    bg "#2E3440"
-                    black "#3B4252"
-                    red "#BF616A"
-                    green "#A3BE8C"
-                    yellow "#EBCB8B"
-                    blue "#81A1C1"
-                    magenta "#B48EAD"
-                    cyan "#88C0D0"
-                    white "#E5E9F0"
-                    orange "#D08770"
-                }
-            }
-        "##;
-        let config = Config::from_kdl(config_contents, None).unwrap();
-        let mut expected_themes = HashMap::new();
-        expected_themes.insert(
-            "dracula".into(),
-            Theme {
-                palette: Palette {
-                    fg: PaletteColor::Rgb((248, 248, 242)),
-                    bg: PaletteColor::Rgb((40, 42, 54)),
-                    red: PaletteColor::Rgb((255, 85, 85)),
-                    green: PaletteColor::Rgb((80, 250, 123)),
-                    yellow: PaletteColor::Rgb((241, 250, 140)),
-                    blue: PaletteColor::Rgb((98, 114, 164)),
-                    magenta: PaletteColor::Rgb((255, 121, 198)),
-                    orange: PaletteColor::Rgb((255, 184, 108)),
-                    cyan: PaletteColor::Rgb((139, 233, 253)),
-                    black: PaletteColor::Rgb((0, 0, 0)),
-                    white: PaletteColor::Rgb((255, 255, 255)),
-                    ..Default::default()
-                }
-                .into(),
-                sourced_from_external_file: false,
-            },
-        );
-        expected_themes.insert(
-            "nord".into(),
-            Theme {
-                palette: Palette {
-                    fg: PaletteColor::Rgb((216, 222, 233)),
-                    bg: PaletteColor::Rgb((46, 52, 64)),
-                    black: PaletteColor::Rgb((59, 66, 82)),
-                    red: PaletteColor::Rgb((191, 97, 106)),
-                    green: PaletteColor::Rgb((163, 190, 140)),
-                    yellow: PaletteColor::Rgb((235, 203, 139)),
-                    blue: PaletteColor::Rgb((129, 161, 193)),
-                    magenta: PaletteColor::Rgb((180, 142, 173)),
-                    cyan: PaletteColor::Rgb((136, 192, 208)),
-                    white: PaletteColor::Rgb((229, 233, 240)),
-                    orange: PaletteColor::Rgb((208, 135, 112)),
-                    ..Default::default()
-                }
-                .into(),
-                sourced_from_external_file: false,
-            },
-        );
-        let expected_themes = Themes::from_data(expected_themes);
-        assert_eq!(config.themes, expected_themes, "Theme defined in config");
-    }
-
-    #[test]
-    fn can_define_eight_bit_themes() {
-        let config_contents = r#"
-            themes {
-                eight_bit_theme {
-                    fg 248
-                    bg 40
-                    red 255
-                    green 80
-                    yellow 241
-                    blue 98
-                    magenta 255
-                    orange 255
-                    cyan 139
-                    black 1
-                    white 255
-                }
-            }
-        "#;
-        let config = Config::from_kdl(config_contents, None).unwrap();
-        let mut expected_themes = HashMap::new();
-        expected_themes.insert(
-            "eight_bit_theme".into(),
-            Theme {
-                palette: Palette {
-                    fg: PaletteColor::EightBit(248),
-                    bg: PaletteColor::EightBit(40),
-                    red: PaletteColor::EightBit(255),
-                    green: PaletteColor::EightBit(80),
-                    yellow: PaletteColor::EightBit(241),
-                    blue: PaletteColor::EightBit(98),
-                    magenta: PaletteColor::EightBit(255),
-                    orange: PaletteColor::EightBit(255),
-                    cyan: PaletteColor::EightBit(139),
-                    black: PaletteColor::EightBit(1),
-                    white: PaletteColor::EightBit(255),
-                    ..Default::default()
-                }
-                .into(),
-                sourced_from_external_file: false,
-            },
-        );
-        let expected_themes = Themes::from_data(expected_themes);
-        assert_eq!(config.themes, expected_themes, "Theme defined in config");
-    }
-
-    #[test]
-    fn can_define_style_for_theme_with_hex() {
-        let config_contents = r##"
-            themes {
-                named_theme {
-                    text_unselected {
-                        base "#DCD7BA"
-                        emphasis_0 "#DCD7CD"
-                        emphasis_1 "#DCD8DD"
-                        emphasis_2 "#DCD899"
-                        emphasis_3 "#ACD7CD"
-                        background   "#1F1F28"
-                    }
-                    text_selected {
-                        base "#16161D"
-                        emphasis_0 "#16161D"
-                        emphasis_1 "#16161D"
-                        emphasis_2 "#16161D"
-                        emphasis_3 "#16161D"
-                        background   "#9CABCA"
-                    }
-                    ribbon_unselected {
-                        base "#DCD7BA"
-                        emphasis_0 "#7FB4CA"
-                        emphasis_1 "#A3D4D5"
-                        emphasis_2 "#7AA89F"
-                        emphasis_3 "#DCD819"
-                        background   "#252535"
-                    }
-                    ribbon_selected {
-                        base "#16161D"
-                        emphasis_0 "#181820"
-                        emphasis_1 "#1A1A22"
-                        emphasis_2 "#2A2A37"
-                        emphasis_3 "#363646"
-                        background   "#76946A"
-                    }
-                    table_title {
-                        base "#DCD7BA"
-                        emphasis_0 "#7FB4CA"
-                        emphasis_1 "#A3D4D5"
-                        emphasis_2 "#7AA89F"
-                        emphasis_3 "#DCD819"
-                        background   "#252535"
-                    }
-                    table_cell_unselected {
-                        base "#DCD7BA"
-                        emphasis_0 "#DCD7CD"
-                        emphasis_1 "#DCD8DD"
-                        emphasis_2 "#DCD899"
-                        emphasis_3 "#ACD7CD"
-                        background   "#1F1F28"
-                    }
-                    table_cell_selected {
-                        base "#16161D"
-                        emphasis_0 "#181820"
-                        emphasis_1 "#1A1A22"
-                        emphasis_2 "#2A2A37"
-                        emphasis_3 "#363646"
-                        background   "#76946A"
-                    }
-                    list_unselected {
-                        base "#DCD7BA"
-                        emphasis_0 "#DCD7CD"
-                        emphasis_1 "#DCD8DD"
-                        emphasis_2 "#DCD899"
-                        emphasis_3 "#ACD7CD"
-                        background   "#1F1F28"
-                    }
-                    list_selected {
-                        base "#16161D"
-                        emphasis_0 "#181820"
-                        emphasis_1 "#1A1A22"
-                        emphasis_2 "#2A2A37"
-                        emphasis_3 "#363646"
-                        background   "#76946A"
-                    }
-                    frame_unselected {
-                        base "#DCD8DD"
-                        emphasis_0 "#7FB4CA"
-                        emphasis_1 "#A3D4D5"
-                        emphasis_2 "#7AA89F"
-                        emphasis_3 "#DCD819"
-                    }
-                    frame_selected {
-                        base "#76946A"
-                        emphasis_0 "#C34043"
-                        emphasis_1 "#C8C093"
-                        emphasis_2 "#ACD7CD"
-                        emphasis_3 "#DCD819"
-                    }
-                    exit_code_success {
-                        base "#76946A"
-                        emphasis_0 "#76946A"
-                        emphasis_1 "#76946A"
-                        emphasis_2 "#76946A"
-                        emphasis_3 "#76946A"
-                    }
-                    exit_code_error {
-                        base "#C34043"
-                        emphasis_0 "#C34043"
-                        emphasis_1 "#C34043"
-                        emphasis_2 "#C34043"
-                        emphasis_3 "#C34043"
-                    }
-                }
-            }
-            "##;
-
-        let config = Config::from_kdl(config_contents, None).unwrap();
-        let mut expected_themes = HashMap::new();
-        expected_themes.insert(
-            "named_theme".into(),
-            Theme {
-                sourced_from_external_file: false,
-                palette: Styling {
-                    text_unselected: StyleDeclaration {
-                        base: PaletteColor::Rgb((220, 215, 186)),
-                        emphasis_0: PaletteColor::Rgb((220, 215, 205)),
-                        emphasis_1: PaletteColor::Rgb((220, 216, 221)),
-                        emphasis_2: PaletteColor::Rgb((220, 216, 153)),
-                        emphasis_3: PaletteColor::Rgb((172, 215, 205)),
-                        background: PaletteColor::Rgb((31, 31, 40)),
-                    },
-                    text_selected: StyleDeclaration {
-                        base: PaletteColor::Rgb((22, 22, 29)),
-                        emphasis_0: PaletteColor::Rgb((22, 22, 29)),
-                        emphasis_1: PaletteColor::Rgb((22, 22, 29)),
-                        emphasis_2: PaletteColor::Rgb((22, 22, 29)),
-                        emphasis_3: PaletteColor::Rgb((22, 22, 29)),
-                        background: PaletteColor::Rgb((156, 171, 202)),
-                    },
-                    ribbon_unselected: StyleDeclaration {
-                        base: PaletteColor::Rgb((220, 215, 186)),
-                        emphasis_0: PaletteColor::Rgb((127, 180, 202)),
-                        emphasis_1: PaletteColor::Rgb((163, 212, 213)),
-                        emphasis_2: PaletteColor::Rgb((122, 168, 159)),
-                        emphasis_3: PaletteColor::Rgb((220, 216, 25)),
-                        background: PaletteColor::Rgb((37, 37, 53)),
-                    },
-                    ribbon_selected: StyleDeclaration {
-                        base: PaletteColor::Rgb((22, 22, 29)),
-                        emphasis_0: PaletteColor::Rgb((24, 24, 32)),
-                        emphasis_1: PaletteColor::Rgb((26, 26, 34)),
-                        emphasis_2: PaletteColor::Rgb((42, 42, 55)),
-                        emphasis_3: PaletteColor::Rgb((54, 54, 70)),
-                        background: PaletteColor::Rgb((118, 148, 106)),
-                    },
-                    table_title: StyleDeclaration {
-                        base: PaletteColor::Rgb((220, 215, 186)),
-                        emphasis_0: PaletteColor::Rgb((127, 180, 202)),
-                        emphasis_1: PaletteColor::Rgb((163, 212, 213)),
-                        emphasis_2: PaletteColor::Rgb((122, 168, 159)),
-                        emphasis_3: PaletteColor::Rgb((220, 216, 25)),
-                        background: PaletteColor::Rgb((37, 37, 53)),
-                    },
-                    table_cell_unselected: StyleDeclaration {
-                        base: PaletteColor::Rgb((220, 215, 186)),
-                        emphasis_0: PaletteColor::Rgb((220, 215, 205)),
-                        emphasis_1: PaletteColor::Rgb((220, 216, 221)),
-                        emphasis_2: PaletteColor::Rgb((220, 216, 153)),
-                        emphasis_3: PaletteColor::Rgb((172, 215, 205)),
-                        background: PaletteColor::Rgb((31, 31, 40)),
-                    },
-                    table_cell_selected: StyleDeclaration {
-                        base: PaletteColor::Rgb((22, 22, 29)),
-                        emphasis_0: PaletteColor::Rgb((24, 24, 32)),
-                        emphasis_1: PaletteColor::Rgb((26, 26, 34)),
-                        emphasis_2: PaletteColor::Rgb((42, 42, 55)),
-                        emphasis_3: PaletteColor::Rgb((54, 54, 70)),
-                        background: PaletteColor::Rgb((118, 148, 106)),
-                    },
-                    list_unselected: StyleDeclaration {
-                        base: PaletteColor::Rgb((220, 215, 186)),
-                        emphasis_0: PaletteColor::Rgb((220, 215, 205)),
-                        emphasis_1: PaletteColor::Rgb((220, 216, 221)),
-                        emphasis_2: PaletteColor::Rgb((220, 216, 153)),
-                        emphasis_3: PaletteColor::Rgb((172, 215, 205)),
-                        background: PaletteColor::Rgb((31, 31, 40)),
-                    },
-                    list_selected: StyleDeclaration {
-                        base: PaletteColor::Rgb((22, 22, 29)),
-                        emphasis_0: PaletteColor::Rgb((24, 24, 32)),
-                        emphasis_1: PaletteColor::Rgb((26, 26, 34)),
-                        emphasis_2: PaletteColor::Rgb((42, 42, 55)),
-                        emphasis_3: PaletteColor::Rgb((54, 54, 70)),
-                        background: PaletteColor::Rgb((118, 148, 106)),
-                    },
-                    frame_unselected: Some(StyleDeclaration {
-                        base: PaletteColor::Rgb((220, 216, 221)),
-                        emphasis_0: PaletteColor::Rgb((127, 180, 202)),
-                        emphasis_1: PaletteColor::Rgb((163, 212, 213)),
-                        emphasis_2: PaletteColor::Rgb((122, 168, 159)),
-                        emphasis_3: PaletteColor::Rgb((220, 216, 25)),
-                        ..Default::default()
-                    }),
-                    frame_selected: StyleDeclaration {
-                        base: PaletteColor::Rgb((118, 148, 106)),
-                        emphasis_0: PaletteColor::Rgb((195, 64, 67)),
-                        emphasis_1: PaletteColor::Rgb((200, 192, 147)),
-                        emphasis_2: PaletteColor::Rgb((172, 215, 205)),
-                        emphasis_3: PaletteColor::Rgb((220, 216, 25)),
-                        ..Default::default()
-                    },
-                    exit_code_success: StyleDeclaration {
-                        base: PaletteColor::Rgb((118, 148, 106)),
-                        emphasis_0: PaletteColor::Rgb((118, 148, 106)),
-                        emphasis_1: PaletteColor::Rgb((118, 148, 106)),
-                        emphasis_2: PaletteColor::Rgb((118, 148, 106)),
-                        emphasis_3: PaletteColor::Rgb((118, 148, 106)),
-                        ..Default::default()
-                    },
-                    exit_code_error: StyleDeclaration {
-                        base: PaletteColor::Rgb((195, 64, 67)),
-                        emphasis_0: PaletteColor::Rgb((195, 64, 67)),
-                        emphasis_1: PaletteColor::Rgb((195, 64, 67)),
-                        emphasis_2: PaletteColor::Rgb((195, 64, 67)),
-                        emphasis_3: PaletteColor::Rgb((195, 64, 67)),
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                },
-            },
-        );
-        let expected_themes = Themes::from_data(expected_themes);
-        assert_eq!(config.themes, expected_themes, "Theme defined in config")
-    }
-
-    #[test]
-    fn omitting_required_style_errors() {
-        let config_contents = r##"
-            themes {
-                named_theme {
-                    text_unselected {
-                        base "#DCD7BA"
-                        emphasis_1 "#DCD8DD"
-                        emphasis_2 "#DCD899"
-                        emphasis_3 "#ACD7CD"
-                        background   "#1F1F28"
-                    }
-                }
-            }
-            "##;
-
-        let config = Config::from_kdl(config_contents, None);
-        assert!(config.is_err());
-        if let Err(ConfigError::KdlError(KdlError {
-            error_message,
-            src: _,
-            offset: _,
-            len: _,
-            help_message: _,
-        })) = config
-        {
-            assert_eq!(error_message, "Missing theme color: emphasis_0")
-        }
-    }
-
-    #[test]
-    fn partial_declaration_of_styles_defaults_omitted() {
-        let config_contents = r##"
-            themes {
-                named_theme {
-                    text_unselected {
-                        base "#DCD7BA"
-                        emphasis_0 "#DCD7CD"
-                        emphasis_1 "#DCD8DD"
-                        emphasis_2 "#DCD899"
-                        emphasis_3 "#ACD7CD"
-                        background   "#1F1F28"
-                    }
-                }
-            }
-            "##;
-
-        let config = Config::from_kdl(config_contents, None).unwrap();
-        let mut expected_themes = HashMap::new();
-        expected_themes.insert(
-            "named_theme".into(),
-            Theme {
-                sourced_from_external_file: false,
-                palette: Styling {
-                    text_unselected: StyleDeclaration {
-                        base: PaletteColor::Rgb((220, 215, 186)),
-                        emphasis_0: PaletteColor::Rgb((220, 215, 205)),
-                        emphasis_1: PaletteColor::Rgb((220, 216, 221)),
-                        emphasis_2: PaletteColor::Rgb((220, 216, 153)),
-                        emphasis_3: PaletteColor::Rgb((172, 215, 205)),
-                        background: PaletteColor::Rgb((31, 31, 40)),
-                    },
-                    ..Default::default()
-                },
-            },
-        );
-        let expected_themes = Themes::from_data(expected_themes);
-        assert_eq!(config.themes, expected_themes, "Theme defined in config")
-    }
-
-    #[test]
-    fn can_define_plugin_configuration_in_configfile() {
-        let config_contents = r#"
-            plugins {
-                tab-bar location="zellij:tab-bar"
-                status-bar location="zellij:status-bar"
-                strider location="zellij:strider"
-                compact-bar location="zellij:compact-bar"
-                session-manager location="zellij:session-manager"
-                welcome-screen location="zellij:session-manager" {
-                    welcome_screen true
-                }
-                filepicker location="zellij:strider"
-            }
-        "#;
-        let config = Config::from_kdl(config_contents, None).unwrap();
-        let mut expected_plugin_configuration = BTreeMap::new();
-        expected_plugin_configuration.insert(
-            "tab-bar".to_owned(),
-            RunPlugin::from_url("zellij:tab-bar").unwrap(),
-        );
-        expected_plugin_configuration.insert(
-            "status-bar".to_owned(),
-            RunPlugin::from_url("zellij:status-bar").unwrap(),
-        );
-        expected_plugin_configuration.insert(
-            "strider".to_owned(),
-            RunPlugin::from_url("zellij:strider").unwrap(),
-        );
-        expected_plugin_configuration.insert(
-            "compact-bar".to_owned(),
-            RunPlugin::from_url("zellij:compact-bar").unwrap(),
-        );
-        expected_plugin_configuration.insert(
-            "session-manager".to_owned(),
-            RunPlugin::from_url("zellij:session-manager").unwrap(),
-        );
-        let mut welcome_screen_configuration = BTreeMap::new();
-        welcome_screen_configuration.insert("welcome_screen".to_owned(), "true".to_owned());
-        expected_plugin_configuration.insert(
-            "welcome-screen".to_owned(),
-            RunPlugin::from_url("zellij:session-manager")
-                .unwrap()
-                .with_configuration(welcome_screen_configuration),
-        );
-        expected_plugin_configuration.insert(
-            "filepicker".to_owned(),
-            RunPlugin::from_url("zellij:strider").unwrap(),
-        );
         assert_eq!(
-            config.plugins,
-            PluginAliases::from_data(expected_plugin_configuration),
-            "Plugins defined in config"
-        );
-    }
-
-    #[test]
-    fn can_define_ui_configuration_in_configfile() {
-        let config_contents = r#"
-            ui {
-                pane_frames {
-                    rounded_corners true
-                    hide_session_name true
-                }
-            }
-        "#;
-        let config = Config::from_kdl(config_contents, None).unwrap();
-        let expected_ui_config = UiConfig {
-            pane_frames: FrameConfig {
-                rounded_corners: true,
-                hide_session_name: true,
-            },
-        };
-        assert_eq!(config.ui, expected_ui_config, "Ui config defined in config");
-    }
-
-    #[test]
-    fn can_define_env_variables_in_config_file() {
-        let config_contents = r#"
-            env {
-                RUST_BACKTRACE 1
-                SOME_OTHER_VAR "foo"
-            }
-        "#;
-        let config = Config::from_kdl(config_contents, None).unwrap();
-        let mut expected_env_config = HashMap::new();
-        expected_env_config.insert("RUST_BACKTRACE".into(), "1".into());
-        expected_env_config.insert("SOME_OTHER_VAR".into(), "foo".into());
-        assert_eq!(
-            config.env,
-            EnvironmentVariables::from_data(expected_env_config),
-            "Env variables defined in config"
+            config.options.status_bar_refresh_interval,
+            Some(2),
+            "Option set in config"
         );
     }
 }

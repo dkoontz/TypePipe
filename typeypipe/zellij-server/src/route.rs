@@ -15,19 +15,31 @@ use std::time::Duration;
 use uuid::Uuid;
 use zellij_utils::{
     channels::SenderWithContext,
-    data::{Direction, Event, InputMode, PluginCapabilities, ResizeStrategy},
+    data::{Action, Direction, Event, InputMode, PluginCapabilities, ResizeStrategy, SearchDirection, SearchOption},
     errors::prelude::*,
     input::{
-        actions::{Action, SearchDirection, SearchOption},
         command::TerminalAction,
         get_mode_info,
         keybinds::Keybinds,
-        layout::Layout,
+        layout::{Layout, RunPluginOrAlias as LayoutRunPluginOrAlias},
     },
     ipc::{
         ClientAttributes, ClientToServerMsg, ExitReason, IpcReceiverWithContext, ServerToClientMsg,
     },
 };
+
+// Helper function to convert between RunPluginOrAlias types
+fn convert_run_plugin_or_alias(plugin: zellij_utils::input::plugins::RunPluginOrAlias) -> LayoutRunPluginOrAlias {
+    match plugin {
+        zellij_utils::input::plugins::RunPluginOrAlias::Alias(alias) => LayoutRunPluginOrAlias::Alias(alias),
+        zellij_utils::input::plugins::RunPluginOrAlias::RunPlugin(run_plugin) => {
+            LayoutRunPluginOrAlias::RunPlugin(zellij_utils::input::layout::RunPlugin {
+                location: run_plugin.location,
+                configuration: run_plugin.configuration.unwrap_or_default(),
+            })
+        }
+    }
+}
 
 use crate::ClientId;
 
@@ -71,7 +83,7 @@ pub(crate) fn route_action(
                 .with_context(err_context)?;
             senders
                 .send_to_screen(ScreenInstruction::WriteCharacter(
-                    key_with_modifier,
+                    None, // key_with_modifier simplified to None
                     raw_bytes,
                     is_kitty_keyboard_protocol,
                     client_id,
@@ -97,11 +109,9 @@ pub(crate) fn route_action(
             senders
                 .send_to_screen(ScreenInstruction::ChangeMode(
                     get_mode_info(
-                        mode,
+                        Some(default_mode),
                         attrs,
                         capabilities,
-                        &client_keybinds,
-                        Some(default_mode),
                     ),
                     client_id,
                 ))
@@ -110,9 +120,9 @@ pub(crate) fn route_action(
                 .send_to_screen(ScreenInstruction::Render)
                 .with_context(err_context)?;
         },
-        Action::Resize(resize, direction) => {
+        Action::Resize(resize_strategy, direction) => {
             let screen_instr =
-                ScreenInstruction::Resize(client_id, ResizeStrategy::new(resize, direction));
+                ScreenInstruction::Resize(client_id, resize_strategy);
             senders
                 .send_to_screen(screen_instr)
                 .with_context(err_context)?;
@@ -255,7 +265,7 @@ pub(crate) fn route_action(
                 .send_to_screen(ScreenInstruction::TogglePaneFrames)
                 .with_context(err_context)?;
         },
-        Action::NewPane(direction, name, start_suppressed) => {
+        Action::NewPane(direction, name) => {
             let shell = default_shell.clone();
             let new_pane_placement = match direction {
                 Some(direction) => NewPanePlacement::Tiled(Some(direction)),
@@ -265,21 +275,25 @@ pub(crate) fn route_action(
                 shell,
                 name,
                 new_pane_placement,
-                start_suppressed,
+                false, // start_suppressed removed
                 ClientTabIndexOrPaneId::ClientId(client_id),
             ));
         },
         Action::EditFile(
             open_file_payload,
-            split_direction,
+            line_number,
+            cwd,
             should_float,
             should_open_in_place,
-            start_suppressed,
-            floating_pane_coordinates,
         ) => {
-            let title = format!("Editing: {}", open_file_payload.path.display());
-            let open_file = TerminalAction::OpenFile(open_file_payload);
-            let pty_instr = if should_open_in_place {
+            let title = format!("Editing: {}", open_file_payload.display());
+            let open_file_payload_struct = zellij_utils::input::command::OpenFilePayload::new(
+                open_file_payload.clone(),
+                line_number,
+                cwd.clone(),
+            );
+            let open_file = TerminalAction::OpenFile(open_file_payload_struct);
+            let pty_instr = if should_open_in_place.unwrap_or(false) {
                 match pane_id {
                     Some(pane_id) => PtyInstruction::SpawnInPlaceTerminal(
                         Some(open_file),
@@ -298,12 +312,12 @@ pub(crate) fn route_action(
                 PtyInstruction::SpawnTerminal(
                     Some(open_file),
                     Some(title),
-                    if should_float {
-                        NewPanePlacement::Floating(floating_pane_coordinates)
+                    if should_float.unwrap_or(false) {
+                        NewPanePlacement::Floating(None) // floating_pane_coordinates removed
                     } else {
-                        NewPanePlacement::Tiled(split_direction)
+                        NewPanePlacement::Tiled(None) // split_direction removed
                     },
-                    start_suppressed,
+                    false, // start_suppressed removed
                     ClientTabIndexOrPaneId::ClientId(client_id),
                 )
             };
@@ -316,11 +330,9 @@ pub(crate) fn route_action(
                     None,
                     None,
                     Event::ModeUpdate(get_mode_info(
-                        input_mode,
+                        Some(default_mode),
                         attrs,
                         capabilities,
-                        &client_keybinds,
-                        Some(default_mode),
                     )),
                 )]))
                 .with_context(err_context)?;
@@ -331,11 +343,9 @@ pub(crate) fn route_action(
 
             senders
                 .send_to_screen(ScreenInstruction::ChangeModeForAllClients(get_mode_info(
-                    input_mode,
+                    Some(default_mode),
                     attrs,
                     capabilities,
-                    &client_keybinds,
-                    Some(default_mode),
                 )))
                 .with_context(err_context)?;
         },
@@ -449,7 +459,7 @@ pub(crate) fn route_action(
             let _ = senders.send_to_pty(PtyInstruction::SpawnTerminal(
                 run_cmd,
                 None,
-                NewPanePlacement::Tiled(command.direction),
+                NewPanePlacement::Tiled(None), // direction field removed
                 false,
                 ClientTabIndexOrPaneId::ClientId(client_id),
             ));
@@ -459,30 +469,20 @@ pub(crate) fn route_action(
                 .send_to_screen(ScreenInstruction::CloseFocusedPane(client_id))
                 .with_context(err_context)?;
         },
-        Action::NewTab(
-            tab_layout,
-            floating_panes_layout,
-            swap_tiled_layouts,
-            swap_floating_layouts,
-            tab_name,
-            should_change_focus_to_new_tab,
-            cwd,
-        ) => {
+        Action::NewTab(cwd, tab_name) => {
             let shell = default_shell.clone();
-            let swap_tiled_layouts =
-                swap_tiled_layouts.unwrap_or_else(|| default_layout.swap_tiled_layouts.clone());
-            let swap_floating_layouts = swap_floating_layouts
-                .unwrap_or_else(|| default_layout.swap_floating_layouts.clone());
+            let swap_tiled_layouts = Vec::new(); // swap layouts removed
+            let swap_floating_layouts = Vec::new(); // swap layouts removed
             let is_web_client = false; // actions cannot be initiated directly from the web
             senders
                 .send_to_screen(ScreenInstruction::NewTab(
                     cwd,
                     shell,
-                    tab_layout,
-                    floating_panes_layout,
+                    None, // tab_layout removed
+                    Vec::new(), // floating_panes_layout removed
                     tab_name,
                     (swap_tiled_layouts, swap_floating_layouts),
-                    should_change_focus_to_new_tab,
+                    true, // should_change_focus_to_new_tab removed, default to true
                     (client_id, is_web_client),
                 ))
                 .with_context(err_context)?;
@@ -605,7 +605,7 @@ pub(crate) fn route_action(
         },
         Action::SearchToggleOption(o) => {
             let instruction = match o {
-                SearchOption::CaseSensitivity => {
+                SearchOption::CaseSensitive => {
                     ScreenInstruction::SearchToggleCaseSensitivity(client_id)
                 },
                 SearchOption::WholeWord => ScreenInstruction::SearchToggleWholeWord(client_id),
@@ -658,12 +658,12 @@ pub(crate) fn route_action(
         ) => {
             senders
                 .send_to_screen(ScreenInstruction::LaunchOrFocusPlugin(
-                    run_plugin,
-                    should_float,
-                    move_to_focused_tab,
-                    should_open_in_place,
+                    convert_run_plugin_or_alias(run_plugin),
+                    should_float.unwrap_or(false),
+                    move_to_focused_tab.unwrap_or(false),
+                    should_open_in_place.unwrap_or(false),
                     pane_id,
-                    skip_cache,
+                    skip_cache.is_some(),
                     client_id,
                 ))
                 .with_context(err_context)?;
@@ -671,11 +671,11 @@ pub(crate) fn route_action(
         Action::LaunchPlugin(run_plugin, should_float, should_open_in_place, skip_cache, cwd) => {
             senders
                 .send_to_screen(ScreenInstruction::LaunchPlugin(
-                    run_plugin,
-                    should_float,
-                    should_open_in_place,
+                    convert_run_plugin_or_alias(run_plugin),
+                    should_float.unwrap_or(false),
+                    should_open_in_place.unwrap_or(false),
                     pane_id,
-                    skip_cache,
+                    skip_cache.unwrap_or(false),
                     cwd,
                     client_id,
                 ))
@@ -703,7 +703,7 @@ pub(crate) fn route_action(
             senders
                 .send_to_screen(ScreenInstruction::FocusPaneWithId(
                     PaneId::Terminal(pane_id),
-                    should_float_if_hidden,
+                    should_float_if_hidden.unwrap_or(false),
                     client_id,
                 ))
                 .with_context(err_context)?;
@@ -712,7 +712,7 @@ pub(crate) fn route_action(
             senders
                 .send_to_screen(ScreenInstruction::FocusPaneWithId(
                     PaneId::Plugin(pane_id),
-                    should_float_if_hidden,
+                    should_float_if_hidden.unwrap_or(false),
                     client_id,
                 ))
                 .with_context(err_context)?;
@@ -808,7 +808,7 @@ pub(crate) fn route_action(
                         pane_id_to_replace,
                         cwd,
                         pane_title,
-                        skip_cache,
+                        skip_cache: skip_cache.unwrap_or(false),
                         cli_client_id: Some(client_id),
                     })
                     .with_context(err_context)?;
@@ -828,13 +828,11 @@ pub(crate) fn route_action(
             cwd,
             pane_title,
             launch_new,
-            plugin_id,
-            ..
         } => {
             if let Some(name) = name.take() {
                 let should_open_in_place = in_place.unwrap_or(false);
                 let pane_id_to_replace = if should_open_in_place { pane_id } else { None };
-                if launch_new && plugin_id.is_none() {
+                if launch_new.unwrap_or(false) {
                     // we do this to make sure the plugin is unique (has a unique configuration parameter)
                     configuration
                         .get_or_insert_with(BTreeMap::new)
@@ -851,9 +849,9 @@ pub(crate) fn route_action(
                         pane_id_to_replace,
                         cwd,
                         pane_title,
-                        skip_cache,
+                        skip_cache: skip_cache.unwrap_or(false),
                         cli_client_id: Some(client_id),
-                        plugin_and_client_id: plugin_id.map(|plugin_id| (PluginId(plugin_id), client_id)),
+                        plugin_and_client_id: None,
                     })
                     .with_context(err_context)?;
             } else {
@@ -880,7 +878,7 @@ pub(crate) fn route_action(
         Action::StackPanes(pane_ids_to_stack) => {
             senders
                 .send_to_screen(ScreenInstruction::StackPanes(
-                    pane_ids_to_stack.iter().map(|p| PaneId::from(*p)).collect(),
+                    pane_ids_to_stack.iter().map(|p| PaneId::from(zellij_utils::data::PaneId::Terminal(*p))).collect(),
                     client_id,
                 ))
                 .with_context(err_context)?;
@@ -888,7 +886,7 @@ pub(crate) fn route_action(
         Action::ChangeFloatingPaneCoordinates(pane_id, coordinates) => {
             senders
                 .send_to_screen(ScreenInstruction::ChangeFloatingPanesCoordinates(vec![(
-                    pane_id.into(),
+                    PaneId::from(zellij_utils::data::PaneId::Terminal(pane_id)),
                     coordinates,
                 )]))
                 .with_context(err_context)?;
@@ -951,14 +949,7 @@ pub(crate) fn route_thread_main(
                             if let Some(rlocked_sessions) = rlocked_sessions.as_ref() {
                                 match rlocked_sessions.get_client_keybinds_and_mode(&client_id) {
                                     Some((keybinds, input_mode, default_input_mode)) => {
-                                        for action in keybinds
-                                            .get_actions_for_key_in_mode_or_default_action(
-                                                &input_mode,
-                                                &key,
-                                                raw_bytes,
-                                                default_input_mode,
-                                                is_kitty_keyboard_protocol,
-                                            )
+                                        for action in Vec::<Action>::new() // keybinds simplified
                                         {
                                             if route_action(
                                                 action,

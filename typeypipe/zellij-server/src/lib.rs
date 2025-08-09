@@ -282,26 +282,12 @@ impl SessionConfiguration {
         match self.runtime_config.get_mut(client_id) {
             Some(config) => {
                 for (input_mode, key_with_modifier) in keys_to_unbind {
-                    let keys_in_mode = config
-                        .keybinds
-                        .0
-                        .entry(input_mode)
-                        .or_insert_with(Default::default);
-                    let removed = keys_in_mode.remove(&key_with_modifier);
-                    if removed.is_some() {
-                        config_changed = true;
-                    }
+                    // Keybinds simplified - no-op for shell wrapper
+                    config_changed = true;
                 }
                 for (input_mode, key_with_modifier, actions) in keys_to_rebind {
-                    let keys_in_mode = config
-                        .keybinds
-                        .0
-                        .entry(input_mode)
-                        .or_insert_with(Default::default);
-                    if keys_in_mode.get(&key_with_modifier) != Some(&actions) {
-                        config_changed = true;
-                        keys_in_mode.insert(key_with_modifier, actions);
-                    }
+                    // Keybinds simplified - no-op for shell wrapper
+                    config_changed = true;
                 }
                 if config_changed {
                     full_reconfigured_config = Some(config.clone());
@@ -709,8 +695,7 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                         );
                     }
                 } else {
-                    let mut floating_panes =
-                        layout.template.map(|t| t.1).clone().unwrap_or_default();
+                    let mut floating_panes: Vec<zellij_utils::input::layout::FloatingPaneLayout> = vec![];
                     if should_launch_setup_wizard {
                         // we only do this here (and only once) because otherwise it will be
                         // intrusive
@@ -745,13 +730,9 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                 let session_data_ref = session_data.read().unwrap();
                 let session_data_ref = session_data_ref.as_ref().unwrap();
                 let mode_info = get_mode_info(
-                    default_mode,
+                    Some(default_mode),
                     &client_attributes,
                     PluginCapabilities { arrow_fonts: false },
-                    &session_data_ref
-                        .session_configuration
-                        .get_client_keybinds(&client_id),
-                    Some(default_mode),
                 );
                 session_data_ref
                     .senders
@@ -809,13 +790,9 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                     .unwrap();
                 let default_mode = config.options.default_mode.unwrap_or_default();
                 let mode_info = get_mode_info(
-                    default_mode,
+                    Some(default_mode),
                     &attrs,
                     PluginCapabilities { arrow_fonts: false },
-                    &session_data
-                        .session_configuration
-                        .get_client_keybinds(&client_id),
-                    Some(default_mode),
                 );
                 session_data
                     .senders

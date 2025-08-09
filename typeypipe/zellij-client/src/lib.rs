@@ -26,10 +26,10 @@ use termwiz::input::InputEvent;
 use zellij_utils::{
     channels::{self, ChannelWithContext, SenderWithContext},
     consts::{set_permissions, ZELLIJ_SOCK_DIR},
-    data::{KeyWithModifier, Style},
+    data::{KeyWithModifier, Style, Layout},
     envs,
     errors::{ClientContext, ContextType, ErrorInstruction, FatalError},
-    input::{config::Config, layout::Layout, options::Options},
+    input::{config::Config, options::Options},
     ipc::{ClientAttributes, ClientToServerMsg, ExitReason, ServerToClientMsg},
 };
 use zellij_utils::cli::CliArgs;

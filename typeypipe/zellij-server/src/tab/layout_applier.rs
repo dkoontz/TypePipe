@@ -219,7 +219,7 @@ impl<'a> LayoutApplier<'a> {
                     focus_layout_if_not_focused,
                 )
             })
-            .map_err(|e| anyhow!(e))?;
+            .map_err(|e: Box<dyn std::error::Error + Send + Sync + 'static>| anyhow!(e))?;
         let mut logical_position = 0;
         for (_layout, position_and_size) in positions_in_layout.iter_mut() {
             position_and_size.logical_position = Some(logical_position);
@@ -298,7 +298,7 @@ impl<'a> LayoutApplier<'a> {
         for (layout, position_and_size) in positions_in_layout {
             if let Some(Run::Plugin(run)) = layout.run.clone() {
                 let pid =
-                    self.new_tiled_plugin_pane(run, new_plugin_ids, &position_and_size, &layout)?;
+                    self.new_tiled_plugin_pane(RunPluginOrAlias::RunPlugin(run), new_plugin_ids, &position_and_size, &layout)?;
                 set_focus_pane_id(&layout, PaneId::Plugin(pid));
             } else if !new_terminal_ids.is_empty() {
                 // there are still panes left to fill, use the pids we received in this method
@@ -514,7 +514,7 @@ impl<'a> LayoutApplier<'a> {
                 None
             } else if let Some(Run::Plugin(run)) = floating_pane_layout.run.clone() {
                 self.new_floating_plugin_pane(
-                    run,
+                    RunPluginOrAlias::RunPlugin(run),
                     &mut new_plugin_ids,
                     position_and_size,
                     &floating_pane_layout,

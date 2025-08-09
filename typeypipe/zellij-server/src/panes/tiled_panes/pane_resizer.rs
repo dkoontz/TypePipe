@@ -22,7 +22,7 @@ pub struct PaneResizer<'a> {
 
 // FIXME: Just hold a mutable Pane reference instead of the PaneId, fixed, pos, and size?
 // Do this after panes are no longer trait-objects!
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 struct Span {
     pid: PaneId,
     direction: SplitDirection,
@@ -253,7 +253,7 @@ impl<'a> PaneResizer<'a> {
 
     fn spans_in_boundary(&self, direction: SplitDirection, boundary: (usize, usize)) -> Vec<Span> {
         let bwn = |v, (s, e)| s <= v && v < e;
-        let mut spans: Vec<_> = self
+        let mut spans: Vec<Span> = self
             .panes
             .borrow()
             .values()

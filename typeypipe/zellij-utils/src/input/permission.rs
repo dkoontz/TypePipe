@@ -59,6 +59,16 @@ impl PermissionCache {
         }
     }
 
+    pub fn from_string(_content: String) -> Result<GrantedPermission, Box<dyn std::error::Error>> {
+        // Simplified stub - permission caching functionality removed for Typey Pipe
+        Ok(GrantedPermission::default())
+    }
+
+    pub fn to_string(_granted: &GrantedPermission) -> String {
+        // Simplified stub - permission caching functionality removed for Typey Pipe
+        String::new()
+    }
+
     pub fn write_to_file(&self) -> std::io::Result<()> {
         let mut f = File::create(&self.path)?;
         write!(f, "{}", PermissionCache::to_string(&self.granted))?;

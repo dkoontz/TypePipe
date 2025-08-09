@@ -79,6 +79,20 @@ impl std::fmt::Display for RunCommand {
     }
 }
 
+impl From<crate::input::layout::RunCommand> for RunCommand {
+    fn from(cmd: crate::input::layout::RunCommand) -> Self {
+        RunCommand {
+            command: cmd.command,
+            args: cmd.args,
+            cwd: cmd.cwd,
+            hold_on_close: cmd.hold_on_close,
+            hold_on_start: cmd.hold_on_start,
+            originating_plugin: None,
+            use_terminal_title: false,
+        }
+    }
+}
+
 /// Intermediate representation
 #[derive(Clone, Debug, Deserialize, Default, Serialize, PartialEq, Eq)]
 pub struct RunCommandAction {

@@ -19,6 +19,8 @@ This repository contains two main directories:
 
 The `rust-analyzer` and `serena` MCP servers contain tools for working with code files. Use them instead of `ls`, `grep`, `sed`, `awk` to find files and symbols in the project. Utilize their refactoring tools instead of manually finding and replacing lines of text. Since this is a Rust project prefer using `rust-analyzer` and fall back to `serena` for tools rust-analyzer lacks.
 
+When running `cargo build` or `cargo check` commands use the `--quiet` flag until you are ready to check for warnings.
+
 ## Testing
 
 Be sure to clean up any temporary test_* files that you create when troubleshooting once you have implemented your fix.

@@ -1,6 +1,5 @@
 #[cfg(not(target_family = "wasm"))]
 use crate::consts::ASSET_MAP;
-use crate::input::theme::Themes;
 #[allow(unused_imports)]
 use crate::{
     cli::CliArgs,
@@ -8,11 +7,11 @@ use crate::{
         FEATURES, SYSTEM_DEFAULT_CONFIG_DIR, SYSTEM_DEFAULT_DATA_DIR_PREFIX, VERSION,
         ZELLIJ_CACHE_DIR, ZELLIJ_DEFAULT_THEMES, ZELLIJ_PROJ_DIR,
     },
+    data::{Layout, Themes},
     errors::prelude::*,
     home::*,
     input::{
         config::{Config, ConfigError},
-        layout::Layout,
         options::Options,
     },
 };
@@ -395,14 +394,14 @@ impl Setup {
                 None => config.options.clone(),
             };
 
-            config.themes = config.themes.merge(get_default_themes());
+            config.themes = config.themes.clone().merge(get_default_themes());
 
             let user_theme_dir = config_options.theme_dir.clone().or_else(|| {
                 get_theme_dir(cli_args.config_dir.clone().or_else(find_default_config_dir))
                     .filter(|dir| dir.exists())
             });
             if let Some(user_theme_dir) = user_theme_dir {
-                config.themes = config.themes.merge(Themes::from_dir(user_theme_dir)?);
+                config.themes = config.themes.clone().merge(Themes::from_dir(user_theme_dir)?);
             }
             Ok(config_options)
         }
@@ -672,11 +671,18 @@ impl Setup {
                 }
             })
         {
-            Layout::from_url(layout_url, config)
+            let layout = Layout::from_url(layout_url, &config).map_err(|e| {
+                ConfigError::new_kdl_error(format!("Failed to load layout from URL: {}", e), 0, 0)
+            })?;
+            Ok((layout, config))
         } else {
             // we merge-override the config here because the layout might contain configuration
             // that needs to take precedence
-            Layout::from_path_or_default(chosen_layout.as_ref(), layout_dir.clone(), config)
+            let layout_dir = layout_dir.unwrap_or_else(|| std::path::PathBuf::from("."));
+            let layout = Layout::from_path_or_default(chosen_layout.as_ref(), layout_dir, &config).map_err(|e| {
+                ConfigError::new_kdl_error(format!("Failed to load layout: {}", e), 0, 0)
+            })?;
+            Ok((layout, config))
         }
     }
     fn handle_setup_commands(_cli_args: &CliArgs) {

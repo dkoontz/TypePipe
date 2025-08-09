@@ -1,74 +1,36 @@
-// Stub for removed plugin functionality
+// Stub plugins module for Phase 6 simplification
+
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use crate::input::layout::RunPlugin;
-use crate::input::config::ConfigError;
-use url::Url;
+use std::path::PathBuf;
 
-#[derive(Debug, Clone, Default, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct PluginAliases {
-    pub aliases: BTreeMap<String, RunPlugin>,
+    pub aliases: BTreeMap<String, String>,
 }
 
-impl PluginAliases {
-    pub fn merge(&mut self, other: PluginAliases) {
-        // Plugin functionality removed - merge is a no-op
-        self.aliases.extend(other.aliases);
-    }
-
-    pub fn from_data(data: BTreeMap<String, RunPlugin>) -> Self {
-        PluginAliases { aliases: data }
-    }
-}
-
-// Stub error type for plugin configuration
-#[derive(Debug, Clone)]
-pub enum PluginsConfigError {
-    InvalidUrlScheme(String),
-    InvalidUrl(String),
-    Generic(String),
-}
-
-impl std::fmt::Display for PluginsConfigError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            PluginsConfigError::InvalidUrlScheme(msg) => write!(f, "Invalid URL scheme: {}", msg),
-            PluginsConfigError::InvalidUrl(msg) => write!(f, "Invalid URL: {}", msg),
-            PluginsConfigError::Generic(msg) => write!(f, "{}", msg),
+impl Default for PluginAliases {
+    fn default() -> Self {
+        Self {
+            aliases: BTreeMap::new(),
         }
     }
 }
 
-impl std::error::Error for PluginsConfigError {}
-
-impl From<ConfigError> for PluginsConfigError {
-    fn from(err: ConfigError) -> Self {
-        PluginsConfigError::Generic(format!("{:?}", err))
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub enum RunPluginOrAlias {
+    Alias(String),
+    RunPlugin(RunPlugin),
 }
 
-impl From<url::ParseError> for PluginsConfigError {
-    fn from(err: url::ParseError) -> Self {
-        PluginsConfigError::InvalidUrl(format!("{:?}", err))
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct RunPlugin {
+    pub location: String,
+    pub configuration: Option<BTreeMap<String, String>>,
+    pub initial_cwd: Option<PathBuf>,
 }
 
-// Stub for plugin tags
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq, Hash)]
-pub enum PluginTag {
-    // Plugin functionality removed - stub variant
-    Stub(String),
-}
-
-impl PluginTag {
-    pub fn new(name: &str) -> Self {
-        PluginTag::Stub(name.to_string())
-    }
-}
-
-impl std::fmt::Display for PluginTag {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            PluginTag::Stub(name) => write!(f, "{}", name),
-        }
-    }
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct PluginUserConfiguration {
+    pub configuration: BTreeMap<String, String>,
 }

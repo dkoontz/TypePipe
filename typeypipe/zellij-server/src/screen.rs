@@ -18,7 +18,7 @@ use zellij_utils::input::command::RunCommand;
 use zellij_utils::input::config::Config;
 use zellij_utils::input::keybinds::Keybinds;
 use zellij_utils::input::mouse::MouseEvent;
-use zellij_utils::input::options::Clipboard;
+use zellij_utils::data::Clipboard;
 use zellij_utils::pane_size::{Size, SizeInPixels};
 use zellij_utils::shared::clean_string_from_control_and_linebreak;
 use zellij_utils::{
@@ -1812,11 +1812,7 @@ impl Screen {
         // in the context of unit/integration tests, we don't need to list available layouts
         // because this is mostly about HD access - it does however throw off the timing in the
         // tests and causes them to flake, which is why we skip it here
-        #[cfg(not(test))]
-        let available_layouts =
-            Layout::list_available_layouts(self.layout_dir.clone(), &self.default_layout_name);
-        #[cfg(test)]
-        let available_layouts = vec![];
+        let available_layouts = vec![]; // layouts simplified
         let session_info = SessionInfo {
             name: self.session_name.clone(),
             tabs: tab_infos,
@@ -2390,7 +2386,7 @@ impl Screen {
                 }
             } else {
                 tab.add_tiled_pane(active_pane, active_pane_id, Some(client_id))?;
-                tiled_panes_layout.ignore_run_instruction(active_pane_run_instruction.clone());
+                // ignore_run_instruction method removed
             }
             let should_change_focus_to_new_tab = true;
             let is_web_client = self
@@ -2467,7 +2463,7 @@ impl Screen {
             // here we pass None instead of the ClientId, because we do not want this pane to be
             // necessarily focused
             tab.add_tiled_pane(pane, pane_id, None)?;
-            tiled_panes_layout.ignore_run_instruction(run_instruction.clone());
+            // ignore_run_instruction method removed
         }
         let is_web_client = self
             .connected_clients
@@ -2780,7 +2776,7 @@ impl Screen {
                 .mode_info
                 .entry(client_id)
                 .or_insert_with(|| self.default_mode_info.clone());
-            mode_info.update_keybinds(new_keybinds);
+            // update_keybinds removed - keybinds simplified
             mode_info.update_default_mode(new_default_mode);
             mode_info.update_theme(theme);
             mode_info.update_arrow_fonts(should_support_arrow_fonts);
@@ -3334,14 +3330,12 @@ pub(crate) fn screen_thread_main(
         &client_attributes,
         max_panes,
         get_mode_info(
-            config_options.default_mode.unwrap_or_default(),
+            config_options.default_mode,
             &client_attributes,
             PluginCapabilities {
                 //  ¯\_(ツ)_/¯
                 arrow_fonts: !arrow_fonts,
             },
-            &config.keybinds,
-            config_options.default_mode,
         ),
         draw_pane_frames,
         auto_layout,
@@ -4831,10 +4825,16 @@ pub(crate) fn screen_thread_main(
                         "({}) - {}",
                         cwd.map(|cwd| cwd.display().to_string())
                             .unwrap_or(".".to_owned()),
-                        run_plugin_or_alias.location_string()
+                        "plugin".to_string() // location_string method removed
                     )
                 });
-                let run_plugin = Run::Plugin(run_plugin_or_alias);
+                let run_plugin = match run_plugin_or_alias {
+                    zellij_utils::input::layout::RunPluginOrAlias::RunPlugin(run_plugin) => Run::Plugin(run_plugin),
+                    zellij_utils::input::layout::RunPluginOrAlias::Alias(_) => {
+                        // For simplified shell wrapper, treat aliases as no-op
+                        continue;
+                    }
+                };
 
                 let close_replaced_pane = false;
                 if should_be_in_place {

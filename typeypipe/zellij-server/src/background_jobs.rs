@@ -221,7 +221,7 @@ pub(crate) fn background_jobs_main(
                                         current_session_plugin_list.lock().unwrap().clone();
                                     let converted_plugin_list = current_session_plugin_list
                                         .into_iter()
-                                        .map(|(plugin_id, run_plugin)| (plugin_id.into(), run_plugin))
+                                        .map(|(plugin_id, run_plugin)| (plugin_id.into(), run_plugin.into()))
                                         .collect();
                                     session_info.populate_plugin_list(converted_plugin_list);
                                 }

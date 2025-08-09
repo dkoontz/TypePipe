@@ -2381,8 +2381,10 @@ impl Tab {
                 },
                 Some(AdjustedInput::WriteBytesToTerminal(adjusted_input)) => {
                     let mut plugin_updates = vec![];
-                    for key in parse_keys(&adjusted_input) {
-                        plugin_updates.push((Some(pid), client_id, Event::Key(key)));
+                    if let Ok(input_str) = String::from_utf8(adjusted_input.clone()) {
+                        for key in parse_keys(&input_str).unwrap_or_default() {
+                            plugin_updates.push((Some(pid), client_id, Event::Key(KeyWithModifier::new(key))));
+                        }
                     }
                     self.senders
                         .send_to_plugin(PluginInstruction::Update(plugin_updates))
@@ -5076,7 +5078,7 @@ impl Tab {
     pub fn update_copy_options(&mut self, copy_options: &CopyOptions) {
         self.clipboard_provider = match &copy_options.command {
             Some(command) => ClipboardProvider::Command(CopyCommand::new(command.clone())),
-            None => ClipboardProvider::Osc52(copy_options.clipboard),
+            None => ClipboardProvider::Osc52(copy_options.clipboard.clone()),
         };
         self.copy_on_select = copy_options.copy_on_select;
     }

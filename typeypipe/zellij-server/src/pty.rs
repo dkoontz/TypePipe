@@ -252,7 +252,7 @@ pub(crate) fn pty_thread_main(mut pty: Pty, layout: Box<Layout>) -> Result<()> {
                     };
                 let invoked_with = match &terminal_action {
                     Some(TerminalAction::RunCommand(run_command)) => {
-                        Some(Run::Command(run_command.clone()))
+                        Some(Run::Command(run_command.clone().into()))
                     },
                     Some(TerminalAction::OpenFile(payload)) => Some(Run::EditFile(
                         payload.path.clone(),
@@ -378,7 +378,7 @@ pub(crate) fn pty_thread_main(mut pty: Pty, layout: Box<Layout>) -> Result<()> {
                 };
                 let invoked_with = match &terminal_action {
                     Some(TerminalAction::RunCommand(run_command)) => {
-                        Some(Run::Command(run_command.clone()))
+                        Some(Run::Command(run_command.clone().into()))
                     },
                     Some(TerminalAction::OpenFile(payload)) => Some(Run::EditFile(
                         payload.path.clone(),
@@ -617,9 +617,14 @@ pub(crate) fn pty_thread_main(mut pty: Pty, layout: Box<Layout>) -> Result<()> {
                 let err_context = || format!("Failed to dump layout");
                 pty.populate_session_layout_metadata(&mut session_layout_metadata);
                 match session_serialization::serialize_session_layout(
-                    session_layout_metadata.into(),
+                    None, // global_cwd
+                    None, // default_shell
+                    vec![], // tabs
+                    vec![], // swap_tiled_layouts
+                    vec![], // swap_floating_layouts
+                    0, // focused_tab_index
                 ) {
-                    Ok((kdl_layout, _pane_contents)) => {
+                    Ok(kdl_layout) => {
                         pty.bus
                             .senders
                             .send_to_server(ServerInstruction::Log(vec![kdl_layout], client_id))
@@ -629,7 +634,7 @@ pub(crate) fn pty_thread_main(mut pty: Pty, layout: Box<Layout>) -> Result<()> {
                     Err(e) => {
                         pty.bus
                             .senders
-                            .send_to_server(ServerInstruction::Log(vec![e.to_owned()], client_id))
+                            .send_to_server(ServerInstruction::Log(vec![format!("{}", e)], client_id))
                             .with_context(err_context)
                             .non_fatal();
                     },
@@ -687,13 +692,18 @@ pub(crate) fn pty_thread_main(mut pty: Pty, layout: Box<Layout>) -> Result<()> {
                 pty.populate_session_layout_metadata(&mut session_layout_metadata);
                 if session_layout_metadata.is_dirty() {
                     match session_serialization::serialize_session_layout(
-                        session_layout_metadata.into(),
+                        None, // global_cwd
+                        None, // default_shell
+                        vec![], // tabs
+                        vec![], // swap_tiled_layouts
+                        vec![], // swap_floating_layouts
+                        0, // focused_tab_index
                     ) {
-                        Ok(kdl_layout_and_pane_contents) => {
+                        Ok(kdl_layout) => {
                             pty.bus
                                 .senders
                                 .send_to_background_jobs(BackgroundJob::ReportLayoutInfo(
-                                    kdl_layout_and_pane_contents,
+                                    (kdl_layout, std::collections::BTreeMap::new()),
                                 ))
                                 .with_context(err_context)?;
                         },
@@ -1149,7 +1159,7 @@ impl Pty {
                         command.cwd = cmd.cwd;
                     }
                 }
-                let cmd = TerminalAction::RunCommand(command.clone());
+                let cmd = TerminalAction::RunCommand(command.clone().into());
                 if starts_held {
                     // we don't actually open a terminal in this case, just wait for the user to run it
                     match self
@@ -1164,7 +1174,7 @@ impl Pty {
                             Ok(Some((
                                 terminal_id,
                                 starts_held,
-                                Some(command.clone()),
+                                Some(command.clone().into()),
                                 Ok(terminal_id as i32), // this is not actually correct but gets
                                                         // stripped later
                             )))
@@ -1186,14 +1196,14 @@ impl Pty {
                             Ok(Some((
                                 terminal_id,
                                 starts_held,
-                                Some(command.clone()),
+                                Some(command.clone().into()),
                                 Ok(pid_primary),
                             )))
                         },
                         Err(err) => {
                             match err.downcast_ref::<ZellijError>() {
                                 Some(ZellijError::CommandNotFound { terminal_id, .. }) => Ok(Some(
-                                    (*terminal_id, starts_held, Some(command.clone()), Err(err)),
+                                    (*terminal_id, starts_held, Some(command.clone().into()), Err(err)),
                                 )),
                                 _ => Err(err),
                             }
@@ -1510,10 +1520,7 @@ impl Pty {
                 _ => None,
             });
 
-        if let RunPluginOrAlias::Alias(alias) = &mut run {
-            let cwd = get_focused_cwd();
-            alias.set_caller_cwd_if_not_set(cwd);
-        }
+        // Alias functionality simplified - no cwd setting needed
         self.bus.senders.send_to_plugin(PluginInstruction::Load(
             0, // plugin_id placeholder
             "plugin_path_placeholder".to_string(), // path placeholder

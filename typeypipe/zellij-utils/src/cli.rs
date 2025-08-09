@@ -1,8 +1,8 @@
-use crate::data::{Direction, InputMode, Resize};
+use crate::data::{Direction, InputMode, Resize, PluginUserConfiguration};
 use crate::setup::Setup;
 use crate::{
     consts::{ZELLIJ_CONFIG_DIR_ENV, ZELLIJ_CONFIG_FILE_ENV},
-    input::{layout::PluginUserConfiguration, options::CliOptions},
+    input::options::CliOptions,
 };
 use clap::{Args, Parser, Subcommand};
 use serde::{Deserialize, Serialize};
@@ -53,16 +53,7 @@ pub struct CliArgs {
     #[clap(long, short, overrides_with = "session", value_parser = validate_session)]
     pub session: Option<String>,
 
-    /// Name of a predefined layout inside the layout directory or the path to a layout file
-    /// if inside a session (or using the --session flag) will be added to the session as a new tab
-    /// or tabs, otherwise will start a new session
-    #[clap(short, long, value_parser, overrides_with = "layout")]
-    pub layout: Option<PathBuf>,
 
-    /// Name of a predefined layout inside the layout directory or the path to a layout file
-    /// Will always start a new session, even if inside an existing session
-    #[clap(short, long, value_parser, overrides_with = "new_session_with_layout")]
-    pub new_session_with_layout: Option<PathBuf>,
 
     /// Change where zellij looks for the configuration file
     #[clap(short, long, overrides_with = "config", env = ZELLIJ_CONFIG_FILE_ENV, value_parser)]
@@ -222,7 +213,7 @@ pub enum Sessions {
         session_name: Option<String>,
 
         /// Create a session if one does not exist.
-        #[clap(short, long, value_parser)]
+        #[clap(short, long)]
         create: bool,
 
         /// Create a detached session in the background if one does not exist
@@ -230,7 +221,7 @@ pub enum Sessions {
         create_background: bool,
 
         /// Number of the session index in the active sessions ordered creation date.
-        #[clap(long, value_parser)]
+        #[clap(long)]
         index: Option<usize>,
 
         /// Change the behaviour of zellij
@@ -265,7 +256,7 @@ pub enum Sessions {
     #[clap(visible_alias = "ka")]
     KillAllSessions {
         /// Automatic yes to prompts
-        #[clap(short, long, value_parser)]
+        #[clap(short, long)]
         yes: bool,
     },
 
@@ -273,7 +264,7 @@ pub enum Sessions {
     #[clap(visible_alias = "da")]
     DeleteAllSessions {
         /// Automatic yes to prompts
-        #[clap(short, long, value_parser)]
+        #[clap(short, long)]
         yes: bool,
         /// Kill the sessions if they're running before deleting them
         #[clap(short, long, value_parser, takes_value(false), default_value("false"))]
@@ -296,7 +287,7 @@ pub enum Sessions {
         direction: Option<Direction>,
 
         /// Change the working directory of the new pane
-        #[clap(long, value_parser)]
+        #[clap(long)]
         cwd: Option<PathBuf>,
 
         /// Open the new pane in floating mode
@@ -316,7 +307,7 @@ pub enum Sessions {
         in_place: bool,
 
         /// Name of the new pane
-        #[clap(short, long, value_parser)]
+        #[clap(short, long)]
         name: Option<String>,
 
         /// Close the pane immediately when its command exits
@@ -360,7 +351,7 @@ pub enum Sessions {
         url: String,
 
         /// Plugin configuration
-        #[clap(short, long, value_parser)]
+        #[clap(short, long)]
         configuration: Option<PluginUserConfiguration>,
 
         /// Open the new pane in floating mode
@@ -403,7 +394,7 @@ pub enum Sessions {
         file: PathBuf,
 
         /// Open the file in the specified line number
-        #[clap(short, long, value_parser)]
+        #[clap(short, long)]
         line_number: Option<usize>,
 
         /// Direction to open the new pane in
@@ -427,7 +418,7 @@ pub enum Sessions {
         floating: bool,
 
         /// Change the working directory of the editor
-        #[clap(long, value_parser)]
+        #[clap(long)]
         cwd: Option<PathBuf>,
         /// The x coordinates if the pane is floating as a bare integer (eg. 1) or percent (eg. 10%)
         #[clap(short, long, requires("floating"))]
@@ -478,7 +469,7 @@ tail -f /tmp/my-live-logfile | zellij pipe --name logs --plugin https://example.
         /// The data to send down this pipe (if blank, will listen to STDIN)
         payload: Option<String>,
 
-        #[clap(short, long, value_parser, display_order(2))]
+        #[clap(short, long, display_order(2))]
         /// The args of the pipe
         args: Option<PluginUserConfiguration>, // TODO: we might want to not re-use
         // PluginUserConfiguration
@@ -488,7 +479,7 @@ tail -f /tmp/my-live-logfile | zellij pipe --name logs --plugin https://example.
         plugin: Option<String>,
         /// The plugin configuration (note: the same plugin with different configuration is
         /// considered a different plugin for the purposes of determining the pipe destination)
-        #[clap(short('c'), long, value_parser, display_order(4))]
+        #[clap(short('c'), long, display_order(4))]
         plugin_configuration: Option<PluginUserConfiguration>,
     },
 }
@@ -578,7 +569,7 @@ pub enum CliAction {
         plugin: Option<String>,
 
         /// Change the working directory of the new pane
-        #[clap(long, value_parser)]
+        #[clap(long)]
         cwd: Option<PathBuf>,
 
         /// Open the new pane in floating mode
@@ -598,7 +589,7 @@ pub enum CliAction {
         in_place: bool,
 
         /// Name of the new pane
-        #[clap(short, long, value_parser)]
+        #[clap(short, long)]
         name: Option<String>,
 
         /// Close the pane immediately when its command exits
@@ -621,9 +612,9 @@ pub enum CliAction {
             requires("command")
         )]
         start_suspended: bool,
-        #[clap(long, value_parser)]
+        #[clap(long)]
         configuration: Option<PluginUserConfiguration>,
-        #[clap(long, value_parser)]
+        #[clap(long)]
         skip_plugin_cache: bool,
         /// The x coordinates if the pane is floating as a bare integer (eg. 1) or percent (eg. 10%)
         #[clap(short, long, requires("floating"))]
@@ -659,7 +650,7 @@ pub enum CliAction {
         direction: Option<Direction>,
 
         /// Open the file in the specified line number
-        #[clap(short, long, value_parser)]
+        #[clap(short, long)]
         line_number: Option<usize>,
 
         /// Open the new pane in floating mode
@@ -679,7 +670,7 @@ pub enum CliAction {
         in_place: bool,
 
         /// Change the working directory of the editor
-        #[clap(long, value_parser)]
+        #[clap(long)]
         cwd: Option<PathBuf>,
         /// The x coordinates if the pane is floating as a bare integer (eg. 1) or percent (eg. 10%)
         #[clap(short, long, requires("floating"))]
@@ -727,7 +718,7 @@ pub enum CliAction {
     GoToTabName {
         name: String,
         /// Create a tab if one does not exist.
-        #[clap(short, long, value_parser)]
+        #[clap(short, long)]
         create: bool,
     },
     /// Renames the focused pane
@@ -739,7 +730,7 @@ pub enum CliAction {
     /// Create a new tab, optionally with a specified tab layout and name
     NewTab {
         /// Layout to use for the new tab
-        #[clap(short, long, value_parser)]
+        #[clap(short, long)]
         layout: Option<PathBuf>,
 
         /// Default folder to look for layouts
@@ -747,11 +738,11 @@ pub enum CliAction {
         layout_dir: Option<PathBuf>,
 
         /// Name of the new tab
-        #[clap(short, long, value_parser)]
+        #[clap(short, long)]
         name: Option<String>,
 
         /// Change the working directory of the new tab
-        #[clap(short, long, value_parser)]
+        #[clap(short, long)]
         cwd: Option<PathBuf>,
     },
     /// Move the focused tab in the specified direction. [right|left]
@@ -764,31 +755,31 @@ pub enum CliAction {
     QueryTabNames,
     StartOrReloadPlugin {
         url: String,
-        #[clap(short, long, value_parser)]
+        #[clap(short, long)]
         configuration: Option<PluginUserConfiguration>,
     },
     LaunchOrFocusPlugin {
-        #[clap(short, long, value_parser)]
+        #[clap(short, long)]
         floating: bool,
-        #[clap(short, long, value_parser)]
+        #[clap(short, long)]
         in_place: bool,
-        #[clap(short, long, value_parser)]
+        #[clap(short, long)]
         move_to_focused_tab: bool,
         url: String,
-        #[clap(short, long, value_parser)]
+        #[clap(short, long)]
         configuration: Option<PluginUserConfiguration>,
-        #[clap(short, long, value_parser)]
+        #[clap(short, long)]
         skip_plugin_cache: bool,
     },
     LaunchPlugin {
-        #[clap(short, long, value_parser)]
+        #[clap(short, long)]
         floating: bool,
-        #[clap(short, long, value_parser)]
+        #[clap(short, long)]
         in_place: bool,
         url: Url,
-        #[clap(short, long, value_parser)]
+        #[clap(short, long)]
         configuration: Option<PluginUserConfiguration>,
-        #[clap(short, long, value_parser)]
+        #[clap(short, long)]
         skip_plugin_cache: bool,
     },
     RenameSession {
@@ -818,7 +809,7 @@ tail -f /tmp/my-live-logfile | zellij action pipe --name logs --plugin https://e
         /// The data to send down this pipe (if blank, will listen to STDIN)
         payload: Option<String>,
 
-        #[clap(short, long, value_parser, display_order(2))]
+        #[clap(short, long, display_order(2))]
         /// The args of the pipe
         args: Option<PluginUserConfiguration>, // TODO: we might want to not re-use
         // PluginUserConfiguration
@@ -828,7 +819,7 @@ tail -f /tmp/my-live-logfile | zellij action pipe --name logs --plugin https://e
         plugin: Option<String>,
         /// The plugin configuration (note: the same plugin with different configuration is
         /// considered a different plugin for the purposes of determining the pipe destination)
-        #[clap(short('c'), long, value_parser, display_order(4))]
+        #[clap(short('c'), long, display_order(4))]
         plugin_configuration: Option<PluginUserConfiguration>,
         /// Launch a new plugin even if one is already running
         #[clap(
@@ -885,7 +876,7 @@ tail -f /tmp/my-live-logfile | zellij action pipe --name logs --plugin https://e
     ChangeFloatingPaneCoordinates {
         /// The pane_id of the floating pane, eg.  terminal_1, plugin_2 or 3 (equivalent to
         /// terminal_3)
-        #[clap(short, long, value_parser)]
+        #[clap(short, long)]
         pane_id: String,
         /// The x coordinates if the pane is floating as a bare integer (eg. 1) or percent (eg. 10%)
         #[clap(short, long)]

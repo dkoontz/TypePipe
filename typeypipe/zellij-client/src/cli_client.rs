@@ -9,7 +9,7 @@ use crate::os_input_output::ClientOsApi;
 use uuid::Uuid;
 use zellij_utils::{
     errors::prelude::*,
-    input::actions::Action,
+    data::Action,
     ipc::{ClientToServerMsg, ExitReason, ServerToClientMsg},
 };
 
@@ -54,8 +54,8 @@ pub fn start_cli_client(
                     plugin,
                     args,
                     configuration,
-                    launch_new,
-                    skip_cache,
+                    launch_new.unwrap_or(false),
+                    skip_cache.unwrap_or(false),
                     floating,
                     in_place,
                     pane_id,
@@ -109,13 +109,13 @@ fn pipe_client(
                 pipe_id: pipe_id.clone(),
                 name: name.clone(),
                 payload,
-                args: args.clone(),
                 plugin: plugin.clone(),
+                args: args.clone(),
                 configuration: configuration.clone(),
+                launch_new: Some(launch_new),
+                skip_cache: Some(skip_cache),
                 floating,
                 in_place,
-                launch_new,
-                skip_cache,
                 cwd: cwd.clone(),
                 pane_title: pane_title.clone(),
             },

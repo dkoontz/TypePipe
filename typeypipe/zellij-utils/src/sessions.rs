@@ -3,8 +3,8 @@ use crate::{
         session_info_folder_for_session, session_layout_cache_file_name,
         ZELLIJ_SESSION_INFO_CACHE_DIR, ZELLIJ_SOCK_DIR,
     },
+    data::Layout,
     envs,
-    input::layout::Layout,
     ipc::{ClientToServerMsg, IpcReceiverWithContext, IpcSenderWithContext, ServerToClientMsg},
 };
 use anyhow;
@@ -355,9 +355,8 @@ pub fn resurrection_layout(session_name_to_resurrect: &str) -> Result<Option<Lay
     };
     match Layout::from_kdl(
         &raw_layout,
-        Some(layout_file_name.display().to_string()),
-        None,
-        None,
+        &layout_file_name.display().to_string(),
+        &crate::input::config::Config::default(),
     ) {
         Ok(layout) => Ok(Some(layout)),
         Err(e) => {

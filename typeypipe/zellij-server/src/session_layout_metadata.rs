@@ -110,7 +110,7 @@ impl SessionLayoutMetadata {
         // 1. The current number of panes is different than the number of panes in the base layout
         //    (meaning a pane was opened or closed)
         // 2. One or more terminal panes are running a command that is not the default shell
-        let base_layout_pane_count = self.default_layout.pane_count();
+        let base_layout_pane_count = 1; // pane_count method removed, default to 1
         let current_pane_count = self.pane_count();
         if current_pane_count != base_layout_pane_count {
             return true;
@@ -257,7 +257,7 @@ impl SessionLayoutMetadata {
                         } else {
                             let mut run_command = RunCommand::new(PathBuf::from(command_name));
                             run_command.args = args;
-                            pane_layout_metadata.run = Some(Run::Command(run_command));
+                            pane_layout_metadata.run = Some(Run::Command(run_command.into()));
                         }
                     }
                 }
@@ -304,7 +304,7 @@ impl SessionLayoutMetadata {
             if let PaneId::Plugin(id) = pane_layout_metadata.id {
                 if let Some(run_plugin) = plugin_ids_to_run_plugins.remove(&id) {
                     pane_layout_metadata.run =
-                        Some(Run::Plugin(RunPluginOrAlias::RunPlugin(run_plugin)));
+                        Some(Run::Plugin(run_plugin));
                 }
             }
         };
@@ -327,15 +327,13 @@ impl SessionLayoutMetadata {
         self.default_editor = Some(default_editor);
     }
     pub fn update_plugin_aliases_in_default_layout(&mut self, plugin_aliases: &PluginAliases) {
-        self.default_layout
-            .populate_plugin_aliases_in_layout(&plugin_aliases);
+        // populate_plugin_aliases_in_layout method removed - no-op for simplified shell wrapper
     }
 }
 
 impl Into<GlobalLayoutManifest> for SessionLayoutMetadata {
     fn into(self) -> GlobalLayoutManifest {
         GlobalLayoutManifest {
-            default_layout: self.default_layout,
             default_shell: self.default_shell,
             global_cwd: self.global_cwd,
             tabs: self
@@ -362,12 +360,13 @@ impl Into<PaneLayoutManifest> for PaneLayoutMetadata {
     fn into(self) -> PaneLayoutManifest {
         PaneLayoutManifest {
             geom: self.geom,
-            run: self.run,
+            run: self.run.map(|r| format!("{:?}", r)), // Convert Run to String
             cwd: self.cwd,
             is_borderless: self.is_borderless,
-            title: self.title,
+            pane_name: self.title,
             is_focused: self.is_focused,
-            pane_contents: self.pane_contents,
+            pane_initial_contents: self.pane_contents,
+            exclude_from_sync: false, // default value
         }
     }
 }
@@ -433,19 +432,22 @@ impl ClientMetadata {
     pub fn stringify_command(&self, editor: &Option<PathBuf>) -> String {
         let stringified = match &self.command {
             Some(Run::Command(..)) => {
-                let (command, args) = extract_command_and_args(&self.command);
-                command.map(|c| format!("{} {}", c, args.join(" ")))
+                let (command, args) = extract_command_and_args("");
+                Some(format!("{} {}", command.display(), args.join(" ")))
             },
             Some(Run::EditFile(..)) => {
-                let (file_to_edit, _line_number) = extract_edit_and_line_number(&self.command);
-                editor.as_ref().and_then(|editor| {
-                    file_to_edit
-                        .map(|file_to_edit| format!("{} {}", editor.display(), file_to_edit))
+                let Some((file_to_edit, _line_number)) = extract_edit_and_line_number("") else {
+                    return "".to_string();
+                };
+                editor.as_ref().map(|editor| {
+                    format!("{} {}", editor.display(), file_to_edit.display())
                 })
             },
             Some(Run::Plugin(..)) => {
-                let (plugin, _plugin_config) = extract_plugin_and_config(&self.command);
-                plugin.map(|p| format!("{}", p))
+                let Some((plugin, _plugin_config)) = extract_plugin_and_config("") else {
+                    return "".to_string();
+                };
+                Some(format!("{}", plugin))
             },
             _ => None,
         };

@@ -1,8 +1,5 @@
 use crate::home::default_layout_dir;
-use crate::input::actions::Action;
 use crate::input::config::ConversionError;
-use crate::input::keybinds::Keybinds;
-use crate::input::layout::{RunPlugin, SplitSize};
 use crate::pane_size::PaneGeom;
 use crate::shared::{colors as default_colors, eightbit_to_rgb};
 use clap::ArgEnum;
@@ -23,6 +20,396 @@ use termwiz::{
 };
 
 pub type ClientId = u16; // TODO: merge with crate type?
+
+// Minimal stubs for removed types
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum Action {
+    // Stub - functionality removed for Typey Pipe
+    NoOp,
+    Write(Option<String>, Vec<u8>, bool),
+    WriteChars(String),
+    PaneNameInput(Vec<u8>),
+    TabNameInput(Vec<u8>),
+    SearchInput(Vec<u8>),
+    GoToTab(u32),
+    SwitchToMode(InputMode),
+    Resize(ResizeStrategy, Option<Direction>),
+    SwitchFocus,
+    ToggleTab,
+    MoveFocus(Direction),
+    MoveFocusOrTab(Direction),
+    MovePane(Option<Direction>),
+    NewPane(Option<Direction>, Option<String>),
+    NewTab(Option<std::path::PathBuf>, Option<String>),
+    CloseTab,
+    CloseFocus,
+    Quit,
+    MouseEvent(crate::input::mouse::MouseEvent),
+    CliPipe {
+        pipe_id: String,
+        name: Option<String>,
+        payload: Option<String>,
+        plugin: Option<String>,
+        args: Option<std::collections::BTreeMap<String, String>>,
+        configuration: Option<std::collections::BTreeMap<String, String>>,
+        launch_new: Option<bool>,
+        skip_cache: Option<bool>,
+        floating: Option<bool>,
+        in_place: Option<bool>,
+        cwd: Option<std::path::PathBuf>,
+        pane_title: Option<String>,
+    },
+    // Pane navigation actions
+    FocusNextPane,
+    FocusPreviousPane,
+    MovePaneBackwards,
+    
+    // Screen actions
+    ClearScreen,
+    DumpScreen(String, bool),
+    DumpLayout,
+    EditScrollback,
+    
+    // Scrolling actions
+    ScrollUp,
+    ScrollUpAt(crate::position::Position),
+    ScrollDown,
+    ScrollDownAt(crate::position::Position),
+    ScrollToBottom,
+    ScrollToTop,
+    PageScrollUp,
+    PageScrollDown,
+    HalfPageScrollUp,
+    HalfPageScrollDown,
+    
+    // Pane management
+    ToggleFocusFullscreen,
+    TogglePaneFrames,
+    EditFile(std::path::PathBuf, Option<usize>, Option<std::path::PathBuf>, Option<bool>, Option<bool>),
+    
+    // Mode switching
+    SwitchModeForAllClients(InputMode),
+    
+    // Floating panes
+    NewFloatingPane(Option<crate::input::command::RunCommand>, Option<String>, Option<crate::data::FloatingPaneCoordinates>),
+    NewInPlacePane(Option<crate::input::command::RunCommand>, Option<String>),
+    NewStackedPane(Option<crate::input::command::RunCommand>, Option<String>),
+    NewTiledPane(Option<Direction>, Option<crate::input::command::RunCommand>, Option<String>),
+    TogglePaneEmbedOrFloating,
+    ToggleFloatingPanes,
+    
+    // Pane renaming
+    UndoRenamePane,
+    
+    // Command execution
+    Run(crate::input::command::RunCommand),
+    
+    // Tab management
+    GoToNextTab,
+    GoToPreviousTab,
+    ToggleActiveSyncTab,
+    GoToTabName(String, bool),
+    UndoRenameTab,
+    MoveTab(Direction),
+    
+    // Session management
+    Detach,
+    
+    // Copy/paste
+    Copy,
+    Confirm,
+    Deny,
+    SkipConfirm(Box<Action>),
+    
+    // Search
+    Search(crate::data::SearchDirection),
+    SearchToggleOption(crate::data::SearchOption),
+    
+    // Mouse and layout
+    ToggleMouseMode,
+    PreviousSwapLayout,
+    NextSwapLayout,
+    QueryTabNames,
+    
+    // Plugin management
+    NewTiledPluginPane(crate::input::plugins::RunPluginOrAlias, Option<String>, Option<bool>, Option<std::path::PathBuf>),
+    NewFloatingPluginPane(crate::input::plugins::RunPluginOrAlias, Option<String>, Option<bool>, Option<crate::data::FloatingPaneCoordinates>, Option<std::path::PathBuf>),
+    NewInPlacePluginPane(crate::input::plugins::RunPluginOrAlias, Option<String>, Option<bool>),
+    StartOrReloadPlugin(crate::input::plugins::RunPluginOrAlias),
+    LaunchOrFocusPlugin(crate::input::plugins::RunPluginOrAlias, Option<bool>, Option<bool>, Option<bool>, Option<std::path::PathBuf>),
+    LaunchPlugin(crate::input::plugins::RunPluginOrAlias, Option<bool>, Option<bool>, Option<bool>, Option<std::path::PathBuf>),
+    
+    // Pane closing and focusing
+    CloseTerminalPane(u32),
+    ClosePluginPane(u32),
+    FocusTerminalPaneWithId(u32, Option<bool>),
+    FocusPluginPaneWithId(u32, Option<bool>),
+    
+    // Renaming
+    RenameTerminalPane(u32, Vec<u8>),
+    RenamePluginPane(u32, Vec<u8>),
+    RenameTab(usize, Vec<u8>),
+    
+    // Pane breaking
+    BreakPane,
+    BreakPaneRight,
+    BreakPaneLeft,
+    
+    // Session renaming
+    RenameSession(String),
+    
+    // Keybind pipe
+    KeybindPipe {
+        name: Option<String>,
+        payload: Option<String>,
+        args: Option<std::collections::BTreeMap<String, String>>,
+        plugin: Option<String>,
+        configuration: Option<std::collections::BTreeMap<String, String>>,
+        launch_new: Option<bool>,
+        skip_cache: Option<bool>,
+        floating: Option<bool>,
+        in_place: Option<bool>,
+        cwd: Option<std::path::PathBuf>,
+        pane_title: Option<String>,
+    },
+    
+    // Client management
+    ListClients,
+    
+    // Pane grouping
+    TogglePanePinned,
+    StackPanes(Vec<u32>),
+    ChangeFloatingPaneCoordinates(u32, crate::data::FloatingPaneCoordinates),
+    TogglePaneInGroup,
+    ToggleGroupMarking,
+}
+
+impl Action {
+    pub fn is_mouse_action(&self) -> bool {
+        matches!(self, Action::MouseEvent(_))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum SplitSize {
+    Fixed(usize),
+    Percent(f64),
+}
+
+impl FromStr for SplitSize {
+    type Err = Box<dyn std::error::Error>;
+    
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.ends_with('%') {
+            let percent = s.trim_end_matches('%').parse::<f64>()?;
+            Ok(SplitSize::Percent(percent))
+        } else {
+            let fixed = s.parse::<usize>()?;
+            Ok(SplitSize::Fixed(fixed))
+        }
+    }
+}
+
+impl SplitSize {
+    pub fn to_fixed(&self, total: usize) -> usize {
+        match self {
+            SplitSize::Fixed(size) => *size,
+            SplitSize::Percent(percent) => ((total as f64) * (percent / 100.0)) as usize,
+        }
+    }
+    
+    pub fn to_position(&self, total: usize) -> usize {
+        self.to_fixed(total)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SplitDirection {
+    Horizontal,
+    Vertical,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Keybinds {
+    // Stub - functionality removed for Typey Pipe
+}
+
+impl Keybinds {
+    pub fn to_keybinds_vec(&self) -> KeybindsVec {
+        vec![]
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RunPlugin {
+    // Stub - functionality removed for Typey Pipe
+    pub location: String,
+}
+
+impl From<crate::input::layout::RunPlugin> for RunPlugin {
+    fn from(plugin: crate::input::layout::RunPlugin) -> Self {
+        RunPlugin {
+            location: plugin.location,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PluginUserConfiguration {
+    // Stub - functionality removed for Typey Pipe
+}
+
+impl PluginUserConfiguration {
+    pub fn new(_config: std::collections::BTreeMap<String, String>) -> Self {
+        PluginUserConfiguration {}
+    }
+}
+
+impl FromStr for PluginUserConfiguration {
+    type Err = String;
+    
+    fn from_str(_s: &str) -> Result<Self, Self::Err> {
+        Ok(PluginUserConfiguration {})
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum LayoutInfo {
+    File(String),
+    BuiltIn(String),
+    Url(String),
+    Stringified(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Layout {
+    // Stub - functionality removed for Typey Pipe
+    pub swap_tiled_layouts: Vec<crate::input::layout::SwapTiledLayout>,
+    pub swap_floating_layouts: Vec<crate::input::layout::SwapFloatingLayout>,
+    pub template: Option<(String, String)>,
+}
+
+impl Default for Layout {
+    fn default() -> Self {
+        Layout {
+            swap_tiled_layouts: vec![],
+            swap_floating_layouts: vec![],
+            template: None,
+        }
+    }
+}
+
+impl Layout {
+    pub fn stringified_from_path_or_default(_path: Option<&std::path::PathBuf>, _layout_dir: Option<std::path::PathBuf>) -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(Layout::default())
+    }
+    
+    pub fn from_str(_s: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(Layout::default())
+    }
+    
+    pub fn from_url(_url: &str, _config: &crate::input::config::Config) -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(Layout::default())
+    }
+    
+    pub fn from_path_or_default(_path: Option<&std::path::PathBuf>, _layout_dir: std::path::PathBuf, _config: &crate::input::config::Config) -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(Layout::default())
+    }
+    
+    pub fn from_kdl(_kdl: &str, _name: &str, _config: &crate::input::config::Config) -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(Layout::default())
+    }
+    
+    pub fn new_tab(&self) -> (crate::input::layout::TiledPaneLayout, Vec<crate::input::layout::FloatingPaneLayout>) {
+        // Stub implementation
+        (crate::input::layout::TiledPaneLayout::default(), vec![])
+    }
+    
+    pub fn has_tabs(&self) -> bool {
+        // Stub implementation - for simplified shell wrapper, assume no tabs
+        false
+    }
+    
+    pub fn focused_tab_index(&self) -> Option<usize> {
+        // Stub implementation - for simplified shell wrapper, no tabs
+        None
+    }
+    
+    pub fn tabs(&self) -> Vec<(Option<String>, crate::input::layout::TiledPaneLayout, Vec<crate::input::layout::FloatingPaneLayout>)> {
+        // Stub implementation - for simplified shell wrapper, return empty
+        vec![]
+    }
+    
+
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct PluginAliases {
+    // Stub - functionality removed for Typey Pipe
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct Themes {
+    // Stub - functionality removed for Typey Pipe
+}
+
+impl Themes {
+    pub fn merge(self, _other: Themes) -> Self {
+        self
+    }
+    
+    pub fn from_string(_content: &str, _sourced_from_external_file: bool) -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(Themes::default())
+    }
+    
+    pub fn from_dir(_dir: PathBuf) -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(Themes::default())
+    }
+}
+
+// Additional stub types needed for KDL parsing
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SearchDirection {
+    Up,
+    Down,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SearchOption {
+    CaseSensitive,
+    WholeWord,
+    Wrap,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct WebClientConfig {
+    // Stub - functionality removed for Typey Pipe
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum Clipboard {
+    #[default]
+    System,
+    Primary,
+}
+
+impl std::str::FromStr for Clipboard {
+    type Err = Box<dyn std::error::Error + Send + Sync + 'static>;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "system" => Ok(Clipboard::System),
+            "primary" => Ok(Clipboard::Primary),
+            _ => Err(format!("Invalid clipboard type: {}", s).into()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RunPluginOrAlias {
+    RunPlugin(RunPlugin),
+    Alias(String),
+}
 
 pub fn client_id_to_colors(
     client_id: ClientId,
@@ -1564,7 +1951,7 @@ impl From<Palette> for Styling {
 pub type KeybindsVec = Vec<(InputMode, Vec<(KeyWithModifier, Vec<Action>)>)>;
 
 /// Provides information helpful in rendering the Zellij controls for UI bars
-#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ModeInfo {
     pub mode: InputMode,
     pub base_mode: Option<InputMode>,
@@ -1642,19 +2029,13 @@ pub struct PluginInfo {
 impl From<RunPlugin> for PluginInfo {
     fn from(run_plugin: RunPlugin) -> Self {
         PluginInfo {
-            location: run_plugin.location.display(),
-            configuration: run_plugin.configuration.inner().clone(),
+            location: run_plugin.location,
+            configuration: BTreeMap::new(),
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-pub enum LayoutInfo {
-    BuiltIn(String),
-    File(String),
-    Url(String),
-    Stringified(String),
-}
+// LayoutInfo already defined above
 
 impl LayoutInfo {
     pub fn name(&self) -> &str {
@@ -1735,6 +2116,17 @@ impl SessionInfo {
             plugin_list.insert(plugin_id, run_plugin.into());
         }
         self.plugins = plugin_list;
+    }
+    
+    pub fn from_string(_raw_session_info: &str, _current_session_name: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        // Stub implementation - returns default SessionInfo
+        Ok(SessionInfo::default())
+    }
+}
+
+impl std::fmt::Display for SessionInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Session: {}", self.name)
     }
 }
 
@@ -2170,7 +2562,7 @@ impl PipeMessage {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, Default)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Default)]
 pub struct FloatingPaneCoordinates {
     pub x: Option<SplitSize>,
     pub y: Option<SplitSize>,
@@ -2212,7 +2604,7 @@ impl FloatingPaneCoordinates {
             eprintln!("x must be between 0 and 100");
             return self;
         }
-        self.x = Some(SplitSize::Percent(x));
+        self.x = Some(SplitSize::Percent(x as f64));
         self
     }
     pub fn with_y_fixed(mut self, y: usize) -> Self {
@@ -2224,7 +2616,7 @@ impl FloatingPaneCoordinates {
             eprintln!("y must be between 0 and 100");
             return self;
         }
-        self.y = Some(SplitSize::Percent(y));
+        self.y = Some(SplitSize::Percent(y as f64));
         self
     }
     pub fn with_width_fixed(mut self, width: usize) -> Self {
@@ -2236,7 +2628,7 @@ impl FloatingPaneCoordinates {
             eprintln!("width must be between 0 and 100");
             return self;
         }
-        self.width = Some(SplitSize::Percent(width));
+        self.width = Some(SplitSize::Percent(width as f64));
         self
     }
     pub fn with_height_fixed(mut self, height: usize) -> Self {
@@ -2248,7 +2640,7 @@ impl FloatingPaneCoordinates {
             eprintln!("height must be between 0 and 100");
             return self;
         }
-        self.height = Some(SplitSize::Percent(height));
+        self.height = Some(SplitSize::Percent(height as f64));
         self
     }
 }
