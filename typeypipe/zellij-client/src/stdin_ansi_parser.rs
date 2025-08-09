@@ -20,6 +20,7 @@ pub enum SyncOutput {
 }
 
 impl SyncOutput {
+    #[allow(dead_code)]
     pub fn start_seq(&self) -> &'static [u8] {
         static CSI_BSU_SEQ: &'static [u8] = "\u{1b}[?2026h".as_bytes();
         static DCS_BSU_SEQ: &'static [u8] = "\u{1b}P=1s\u{1b}".as_bytes();
@@ -29,6 +30,7 @@ impl SyncOutput {
         }
     }
 
+    #[allow(dead_code)]
     pub fn end_seq(&self) -> &'static [u8] {
         static CSI_ESU_SEQ: &'static [u8] = "\u{1b}[?2026l".as_bytes();
         static DCS_ESU_SEQ: &'static [u8] = "\u{1b}P=2s\u{1b}".as_bytes();

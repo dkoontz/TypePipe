@@ -73,7 +73,7 @@ pub fn send_control_messages_to_client(
 pub fn parse_stdin(
     buf: &[u8],
     os_input: Box<dyn ClientOsApi>,
-    mouse_old_event: &mut MouseEvent,
+    _mouse_old_event: &mut MouseEvent,
     explicitly_disable_kitty_keyboard_protocol: bool,
 ) {
     if !explicitly_disable_kitty_keyboard_protocol {

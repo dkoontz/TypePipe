@@ -78,8 +78,8 @@ pub enum ClientToServerMsg {
         Box<Options>, // represents the runtime configuration
         Box<Layout>,
         Box<PluginAliases>,
-        bool, // should launch setup wizard
         bool, // is_web_client
+        bool, // should launch setup wizard
         bool, // layout_is_welcome_screen
     ),
     AttachClient(
@@ -92,6 +92,7 @@ pub enum ClientToServerMsg {
     ),
     Action(Action, Option<u32>, Option<ClientId>), // u32 is the terminal id
     Key(KeyWithModifier, Vec<u8>, bool),           // key, raw_bytes, is_kitty_keyboard_protocol
+    TerminalBytes(Vec<u8>), // Raw input bytes to forward to shell
     ClientExited,
     KillSession,
     ConnStatus,

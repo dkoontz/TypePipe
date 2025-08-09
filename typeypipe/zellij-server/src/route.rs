@@ -1205,6 +1205,14 @@ pub(crate) fn route_thread_main(
                             let _ =
                                 to_server.send(ServerInstruction::FailedToStartWebServer(error));
                         },
+                        ClientToServerMsg::TerminalBytes(raw_bytes) => {
+                            // Forward raw bytes directly to the active pane
+                            if let Some(rlocked_sessions) = rlocked_sessions.as_ref() {
+                                let _ = rlocked_sessions
+                                    .senders
+                                    .send_to_screen(ScreenInstruction::WriteCharacter(None, raw_bytes, false, client_id));
+                            }
+                        },
                     }
                     Ok(should_break)
                 };

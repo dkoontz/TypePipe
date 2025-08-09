@@ -70,7 +70,7 @@ fn generate_unique_session_name_or_exit() -> String {
 
 
 pub(crate) fn start_client(opts: CliArgs) {
-    let (config, layout, config_options, _, _) = match Setup::from_cli_args(&opts) {
+    let (_config, _layout, _config_options, _, _) = match Setup::from_cli_args(&opts) {
         Ok(results) => results,
         Err(e) => {
             if let ConfigError::KdlError(error) = e {
@@ -90,15 +90,7 @@ pub(crate) fn start_client(opts: CliArgs) {
     start_client_impl(
         Box::new(os_input),
         opts,
-        config,
-        config_options,
         client,
-        Some(layout),
-        None,
-        None,
-        false,
-        false,
-        false,
     );
 }
 
