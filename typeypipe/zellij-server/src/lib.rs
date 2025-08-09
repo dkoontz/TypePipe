@@ -6,12 +6,13 @@ pub mod tab;
 mod background_jobs;
 mod logging_pipe;
 mod pane_groups;
-mod plugins;
+
 mod pty;
 mod pty_writer;
 mod route;
 mod screen;
 mod session_layout_metadata;
+mod status_bar;
 mod terminal_bytes;
 mod thread_bus;
 mod ui;
@@ -22,7 +23,7 @@ use background_jobs::{background_jobs_main, BackgroundJob};
 use log::info;
 use nix::sys::stat::{umask, Mode};
 use pty_writer::{pty_writer_main, PtyWriteInstruction};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::{
     net::{IpAddr, Ipv4Addr},
     path::PathBuf,
@@ -32,11 +33,11 @@ use std::{
 use zellij_utils::envs;
 use zellij_utils::pane_size::Size;
 
-use wasmtime::{Config as WasmtimeConfig, Engine, Strategy};
+
 
 use crate::{
     os_input_output::ServerOsApi,
-    plugins::{plugin_thread_main, PluginInstruction},
+
     pty::{get_default_shell, pty_thread_main, Pty, PtyInstruction},
     screen::{screen_thread_main, ScreenInstruction},
     thread_bus::{Bus, ThreadSenders},
@@ -48,7 +49,7 @@ use zellij_utils::{
     consts::{
         DEFAULT_SCROLL_BUFFER_SIZE, SCROLL_BUFFER_SIZE, ZELLIJ_SEEN_RELEASE_NOTES_CACHE_FILE,
     },
-    data::{ConnectToSession, Event, InputMode, KeyWithModifier, PluginCapabilities, WebSharing},
+    data::{ConnectToSession, InputMode, KeyWithModifier, PluginCapabilities, WebSharing},
     errors::{prelude::*, ContextType, ErrorInstruction, FatalError, ServerContext},
     home::{default_layout_dir, get_default_data_dir},
     input::{
@@ -57,12 +58,12 @@ use zellij_utils::{
         config::Config,
         get_mode_info,
         keybinds::Keybinds,
-        layout::{FloatingPaneLayout, Layout, PluginAlias, Run, RunPluginOrAlias},
+        layout::{FloatingPaneLayout, Layout},
         options::Options,
-        plugins::PluginAliases,
+
     },
     ipc::{ClientAttributes, ExitReason, ServerToClientMsg},
-    shared::{default_palette, web_server_base_url},
+    shared::{web_server_base_url},
 };
 
 pub type ClientId = u16;
@@ -76,7 +77,7 @@ pub enum ServerInstruction {
         Box<Config>,  // represents the saved config
         Box<Options>, // represents the runtime configuration options
         Box<Layout>,
-        Box<PluginAliases>,
+
         bool, // should launch setup wizard
         bool, // is_web_client
         bool, // layout_is_welcome_screen
@@ -94,7 +95,7 @@ pub enum ServerInstruction {
         Config,              // represents the saved config
         Options,             // represents the runtime configuration options
         Option<usize>,       // tab position to focus
-        Option<(u32, bool)>, // (pane_id, is_plugin) => pane_id to focus
+        Option<u32>, // pane_id to focus
         bool,                // is_web_client
         ClientId,
     ),
@@ -319,7 +320,6 @@ impl SessionConfiguration {
 
 pub(crate) struct SessionMetaData {
     pub senders: ThreadSenders,
-    pub capabilities: PluginCapabilities,
     pub client_attributes: ClientAttributes,
     pub default_shell: Option<TerminalAction>,
     pub layout: Box<Layout>,
@@ -331,7 +331,6 @@ pub(crate) struct SessionMetaData {
     // explicit plugin action
     screen_thread: Option<thread::JoinHandle<()>>,
     pty_thread: Option<thread::JoinHandle<()>>,
-    plugin_thread: Option<thread::JoinHandle<()>>,
     pty_writer_thread: Option<thread::JoinHandle<()>>,
     background_jobs_thread: Option<thread::JoinHandle<()>>,
 }
@@ -374,50 +373,7 @@ impl SessionMetaData {
                     ..Default::default()
                 })
             });
-            self.senders
-                .send_to_screen(ScreenInstruction::Reconfigure {
-                    client_id,
-                    keybinds: new_config.keybinds.clone(),
-                    default_mode: new_config
-                        .options
-                        .default_mode
-                        .unwrap_or_else(Default::default),
-                    theme: new_config
-                        .theme_config(new_config.options.theme.as_ref())
-                        .unwrap_or_else(|| default_palette().into()),
-                    simplified_ui: new_config.options.simplified_ui.unwrap_or(false),
-                    default_shell: new_config.options.default_shell,
-                    pane_frames: new_config.options.pane_frames.unwrap_or(true),
-                    copy_command: new_config.options.copy_command,
-                    copy_to_clipboard: new_config.options.copy_clipboard,
-                    copy_on_select: new_config.options.copy_on_select.unwrap_or(true),
-                    auto_layout: new_config.options.auto_layout.unwrap_or(true),
-                    rounded_corners: new_config.ui.pane_frames.rounded_corners,
-                    hide_session_name: new_config.ui.pane_frames.hide_session_name,
-                    stacked_resize: new_config.options.stacked_resize.unwrap_or(true),
-                    default_editor: new_config.options.scrollback_editor.clone(),
-                    advanced_mouse_actions: new_config
-                        .options
-                        .advanced_mouse_actions
-                        .unwrap_or(true),
-                })
-                .unwrap();
-            self.senders
-                .send_to_plugin(PluginInstruction::Reconfigure {
-                    client_id,
-                    keybinds: Some(new_config.keybinds),
-                    default_mode: new_config.options.default_mode,
-                    default_shell: self.default_shell.clone(),
-                    was_written_to_disk: config_was_written_to_disk,
-                })
-                .unwrap();
-            self.senders
-                .send_to_pty(PtyInstruction::Reconfigure {
-                    client_id,
-                    default_editor: new_config.options.scrollback_editor,
-                    post_command_discovery_hook: new_config.options.post_command_discovery_hook,
-                })
-                .unwrap();
+
         }
     }
 }
@@ -426,7 +382,7 @@ impl Drop for SessionMetaData {
     fn drop(&mut self) {
         let _ = self.senders.send_to_pty(PtyInstruction::Exit);
         let _ = self.senders.send_to_screen(ScreenInstruction::Exit);
-        let _ = self.senders.send_to_plugin(PluginInstruction::Exit);
+
         let _ = self.senders.send_to_pty_writer(PtyWriteInstruction::Exit);
         let _ = self.senders.send_to_background_jobs(BackgroundJob::Exit);
         if let Some(screen_thread) = self.screen_thread.take() {
@@ -435,9 +391,7 @@ impl Drop for SessionMetaData {
         if let Some(pty_thread) = self.pty_thread.take() {
             let _ = pty_thread.join();
         }
-        if let Some(plugin_thread) = self.plugin_thread.take() {
-            let _ = plugin_thread.join();
-        }
+
         if let Some(pty_writer_thread) = self.pty_writer_thread.take() {
             let _ = pty_writer_thread.join();
         }
@@ -666,7 +620,6 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                 config,
                 runtime_config_options,
                 layout,
-                plugin_aliases,
                 should_launch_setup_wizard,
                 is_web_client,
                 layout_is_welcome_screen,
@@ -682,7 +635,6 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                         config_options: runtime_config_options.clone(),
                     },
                     *config.clone(),
-                    plugin_aliases,
                     client_id,
                 );
                 let mut runtime_configuration = config.clone();
@@ -736,7 +688,7 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                             should_focus_tab,
                             (client_id, is_web_client),
                         ))
-                        .unwrap()
+                        .unwrap();
                 };
 
                 if layout.has_tabs() {
@@ -788,13 +740,22 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                         true,
                     );
                 }
-                session_data
-                    .read()
-                    .unwrap()
-                    .as_ref()
-                    .unwrap()
+
+                let default_mode = config.options.default_mode.unwrap_or_default();
+                let session_data_ref = session_data.read().unwrap();
+                let session_data_ref = session_data_ref.as_ref().unwrap();
+                let mode_info = get_mode_info(
+                    default_mode,
+                    &client_attributes,
+                    PluginCapabilities { arrow_fonts: false },
+                    &session_data_ref
+                        .session_configuration
+                        .get_client_keybinds(&client_id),
+                    Some(default_mode),
+                );
+                session_data_ref
                     .senders
-                    .send_to_plugin(PluginInstruction::AddClient(client_id))
+                    .send_to_screen(ScreenInstruction::ChangeMode(mode_info.clone(), client_id))
                     .unwrap();
             },
             ServerInstruction::AttachClient(
@@ -843,18 +804,14 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                         client_id,
                         is_web_client,
                         tab_position_to_focus,
-                        pane_id_to_focus,
+                        pane_id_to_focus.map(|pane_id| (pane_id, false)), // false for is_plugin
                     ))
-                    .unwrap();
-                session_data
-                    .senders
-                    .send_to_plugin(PluginInstruction::AddClient(client_id))
                     .unwrap();
                 let default_mode = config.options.default_mode.unwrap_or_default();
                 let mode_info = get_mode_info(
                     default_mode,
                     &attrs,
-                    session_data.capabilities,
+                    PluginCapabilities { arrow_fonts: false },
                     &session_data
                         .session_configuration
                         .get_client_keybinds(&client_id),
@@ -863,14 +820,6 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                 session_data
                     .senders
                     .send_to_screen(ScreenInstruction::ChangeMode(mode_info.clone(), client_id))
-                    .unwrap();
-                session_data
-                    .senders
-                    .send_to_plugin(PluginInstruction::Update(vec![(
-                        None,
-                        Some(client_id),
-                        Event::ModeUpdate(mode_info),
-                    )]))
                     .unwrap();
             },
             ServerInstruction::UnblockInputThread => {
@@ -943,26 +892,12 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                         .write()
                         .unwrap()
                         .as_ref()
-                        .unwrap()
-                        .senders
-                        .send_to_screen(ScreenInstruction::TerminalResize(min_size))
                         .unwrap();
                 }
                 session_data
                     .write()
                     .unwrap()
                     .as_ref()
-                    .unwrap()
-                    .senders
-                    .send_to_screen(ScreenInstruction::RemoveClient(client_id))
-                    .unwrap();
-                session_data
-                    .write()
-                    .unwrap()
-                    .as_ref()
-                    .unwrap()
-                    .senders
-                    .send_to_plugin(PluginInstruction::RemoveClient(client_id))
                     .unwrap();
                 if !session_state.read().unwrap().active_clients_are_connected() {
                     *session_data.write().unwrap() = None;
@@ -987,26 +922,17 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                         .write()
                         .unwrap()
                         .as_ref()
-                        .unwrap()
-                        .senders
-                        .send_to_screen(ScreenInstruction::TerminalResize(min_size))
                         .unwrap();
                 }
                 session_data
                     .write()
                     .unwrap()
                     .as_ref()
-                    .unwrap()
-                    .senders
-                    .send_to_screen(ScreenInstruction::RemoveClient(client_id))
                     .unwrap();
                 session_data
                     .write()
                     .unwrap()
                     .as_ref()
-                    .unwrap()
-                    .senders
-                    .send_to_plugin(PluginInstruction::RemoveClient(client_id))
                     .unwrap();
             },
             ServerInstruction::SendWebClientsForbidden(client_id) => {
@@ -1020,9 +946,6 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                         .write()
                         .unwrap()
                         .as_ref()
-                        .unwrap()
-                        .senders
-                        .send_to_screen(ScreenInstruction::TerminalResize(min_size))
                         .unwrap();
                 }
             },
@@ -1039,7 +962,7 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                 let client_ids: Vec<ClientId> = session_state
                     .read()
                     .unwrap()
-                    .client_ids()
+                        .client_ids()
                     .iter()
                     .copied()
                     .filter(|c| c != &client_id)
@@ -1060,27 +983,18 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                         session_data
                             .write()
                             .unwrap()
-                            .as_ref()
-                            .unwrap()
-                            .senders
-                            .send_to_screen(ScreenInstruction::TerminalResize(min_size))
+                        .as_ref()
                             .unwrap();
                     }
                     session_data
                         .write()
                         .unwrap()
                         .as_ref()
-                        .unwrap()
-                        .senders
-                        .send_to_screen(ScreenInstruction::RemoveClient(client_id))
                         .unwrap();
                     session_data
                         .write()
                         .unwrap()
                         .as_ref()
-                        .unwrap()
-                        .senders
-                        .send_to_plugin(PluginInstruction::RemoveClient(client_id))
                         .unwrap();
                 }
             },
@@ -1163,27 +1077,18 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                         session_data
                             .write()
                             .unwrap()
-                            .as_ref()
-                            .unwrap()
-                            .senders
-                            .send_to_screen(ScreenInstruction::TerminalResize(min_size))
+                        .as_ref()
                             .unwrap();
                     }
                     session_data
                         .write()
                         .unwrap()
                         .as_ref()
-                        .unwrap()
-                        .senders
-                        .send_to_screen(ScreenInstruction::RemoveClient(client_id))
                         .unwrap();
                     session_data
                         .write()
                         .unwrap()
                         .as_ref()
-                        .unwrap()
-                        .senders
-                        .send_to_plugin(PluginInstruction::RemoveClient(client_id))
                         .unwrap();
                     send_to_client!(
                         client_id,
@@ -1198,24 +1103,24 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                 session_state
                     .write()
                     .unwrap()
-                    .associate_pipe_with_client(pipe_id, client_id);
+                        .associate_pipe_with_client(pipe_id, client_id);
             },
             ServerInstruction::ChangeMode(client_id, input_mode) => {
                 session_data
                     .write()
                     .unwrap()
-                    .as_mut()
+                        .as_mut()
                     .unwrap()
-                    .current_input_modes
+                        .current_input_modes
                     .insert(client_id, input_mode);
             },
             ServerInstruction::ChangeModeForAllClients(input_mode) => {
                 session_data
                     .write()
                     .unwrap()
-                    .as_mut()
+                        .as_mut()
                     .unwrap()
-                    .change_mode_for_all_clients(input_mode);
+                        .change_mode_for_all_clients(input_mode);
             },
             ServerInstruction::Reconfigure {
                 client_id,
@@ -1225,9 +1130,9 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                 let (new_config, runtime_config_changed) = session_data
                     .write()
                     .unwrap()
-                    .as_mut()
+                        .as_mut()
                     .unwrap()
-                    .session_configuration
+                        .session_configuration
                     .reconfigure_runtime_config(&client_id, config);
 
                 if let Some(new_config) = new_config {
@@ -1248,9 +1153,9 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                         session_data
                             .write()
                             .unwrap()
-                            .as_mut()
+                        .as_mut()
                             .unwrap()
-                            .propagate_configuration_changes(
+                        .propagate_configuration_changes(
                                 vec![(client_id, new_config)],
                                 config_was_written_to_disk,
                             );
@@ -1261,26 +1166,23 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                 let changes = session_data
                     .write()
                     .unwrap()
-                    .as_mut()
+                        .as_mut()
                     .unwrap()
-                    .session_configuration
+                        .session_configuration
                     .new_saved_config(client_id, new_config);
                 let config_was_written_to_disk = true;
                 session_data
                     .write()
                     .unwrap()
-                    .as_mut()
+                        .as_mut()
                     .unwrap()
-                    .propagate_configuration_changes(changes, config_was_written_to_disk);
+                        .propagate_configuration_changes(changes, config_was_written_to_disk);
             },
             ServerInstruction::FailedToWriteConfigToDisk(_client_id, file_path) => {
                 session_data
                     .write()
                     .unwrap()
-                    .as_ref()
-                    .unwrap()
-                    .senders
-                    .send_to_plugin(PluginInstruction::FailedToWriteConfigToDisk { file_path })
+                        .as_ref()
                     .unwrap();
             },
             ServerInstruction::RebindKeys {
@@ -1292,9 +1194,9 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                 let (new_config, runtime_config_changed) = session_data
                     .write()
                     .unwrap()
-                    .as_mut()
+                        .as_mut()
                     .unwrap()
-                    .session_configuration
+                        .session_configuration
                     .rebind_keys(&client_id, keys_to_rebind, keys_to_unbind);
                 if let Some(new_config) = new_config {
                     if write_config_to_disk {
@@ -1314,9 +1216,9 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                         session_data
                             .write()
                             .unwrap()
-                            .as_mut()
+                        .as_mut()
                             .unwrap()
-                            .propagate_configuration_changes(
+                        .propagate_configuration_changes(
                                 vec![(client_id, new_config)],
                                 config_was_written_to_disk,
                             );
@@ -1347,10 +1249,7 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                         session_data
                             .write()
                             .unwrap()
-                            .as_ref()
-                            .unwrap()
-                            .senders
-                            .send_to_screen(ScreenInstruction::SessionSharingStatusChange(true))
+                        .as_ref()
                             .unwrap();
                     }
                 } else {
@@ -1369,7 +1268,7 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                         let web_client_ids: Vec<ClientId> = session_state
                             .read()
                             .unwrap()
-                            .web_client_ids()
+                        .web_client_ids()
                             .iter()
                             .copied()
                             .collect();
@@ -1384,10 +1283,7 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                         session_data
                             .write()
                             .unwrap()
-                            .as_ref()
-                            .unwrap()
-                            .senders
-                            .send_to_screen(ScreenInstruction::SessionSharingStatusChange(false))
+                        .as_ref()
                             .unwrap();
                     }
                 } else {
@@ -1399,20 +1295,14 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                 session_data
                     .write()
                     .unwrap()
-                    .as_ref()
-                    .unwrap()
-                    .senders
-                    .send_to_plugin(PluginInstruction::WebServerStarted(base_url))
+                        .as_ref()
                     .unwrap();
             },
             ServerInstruction::FailedToStartWebServer(error) => {
                 session_data
                     .write()
                     .unwrap()
-                    .as_ref()
-                    .unwrap()
-                    .senders
-                    .send_to_plugin(PluginInstruction::FailedToStartWebServer(error))
+                        .as_ref()
                     .unwrap();
             },
         }
@@ -1436,7 +1326,6 @@ fn init_session(
     client_attributes: ClientAttributes,
     options: SessionOptions,
     mut config: Config,
-    plugin_aliases: Box<PluginAliases>,
     client_id: ClientId,
 ) -> SessionMetaData {
     let SessionOptions {
@@ -1459,8 +1348,7 @@ fn init_session(
         channels::bounded(50);
     let to_screen_bounded = SenderWithContext::new(to_screen_bounded);
 
-    let (to_plugin, plugin_receiver): ChannelWithContext<PluginInstruction> = channels::unbounded();
-    let to_plugin = SenderWithContext::new(to_plugin);
+
     let (to_pty, pty_receiver): ChannelWithContext<PtyInstruction> = channels::unbounded();
     let to_pty = SenderWithContext::new(to_pty);
 
@@ -1475,9 +1363,7 @@ fn init_session(
     // Determine and initialize the data directory
     let data_dir = opts.data_dir.unwrap_or_else(get_default_data_dir);
 
-    let capabilities = PluginCapabilities {
-        arrow_fonts: config_options.simplified_ui.unwrap_or_default(),
-    };
+
 
     let serialization_interval = config_options.serialization_interval;
     let disable_session_metadata = config_options.disable_session_metadata.unwrap_or(false);
@@ -1513,7 +1399,7 @@ fn init_session(
                     vec![pty_receiver],
                     Some(&to_screen_bounded),
                     None,
-                    Some(&to_plugin),
+                    None,
                     Some(&to_server),
                     Some(&to_pty_writer),
                     Some(&to_background_jobs),
@@ -1536,7 +1422,7 @@ fn init_session(
                 Some(&to_screen), // there are certain occasions (eg. caching) where the screen
                 // needs to send messages to itself
                 Some(&to_pty),
-                Some(&to_plugin),
+                None,
                 Some(&to_server),
                 Some(&to_pty_writer),
                 Some(&to_background_jobs),
@@ -1562,50 +1448,7 @@ fn init_session(
         })
         .unwrap();
 
-    let zellij_cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-    let plugin_thread = thread::Builder::new()
-        .name("wasm".to_string())
-        .spawn({
-            let plugin_bus = Bus::new(
-                vec![plugin_receiver],
-                Some(&to_screen_bounded),
-                Some(&to_pty),
-                Some(&to_plugin),
-                Some(&to_server),
-                Some(&to_pty_writer),
-                Some(&to_background_jobs),
-                None,
-            );
-            let engine = get_engine();
 
-            let layout = layout.clone();
-            let client_attributes = client_attributes.clone();
-            let default_shell = default_shell.clone();
-            let capabilities = capabilities.clone();
-            let layout_dir = config_options.layout_dir.clone();
-            let background_plugins = config.background_plugins.clone();
-            move || {
-                plugin_thread_main(
-                    plugin_bus,
-                    engine,
-                    data_dir,
-                    layout,
-                    layout_dir,
-                    path_to_default_shell,
-                    zellij_cwd,
-                    capabilities,
-                    client_attributes,
-                    default_shell,
-                    plugin_aliases,
-                    default_mode,
-                    default_keybinds,
-                    background_plugins,
-                    client_id,
-                )
-                .fatal()
-            }
-        })
-        .unwrap();
 
     let pty_writer_thread = thread::Builder::new()
         .name("pty_writer".to_string())
@@ -1614,7 +1457,7 @@ fn init_session(
                 vec![pty_writer_receiver],
                 Some(&to_screen),
                 Some(&to_pty),
-                Some(&to_plugin),
+                None,
                 Some(&to_server),
                 None,
                 Some(&to_background_jobs),
@@ -1631,7 +1474,7 @@ fn init_session(
                 vec![background_jobs_receiver],
                 Some(&to_screen),
                 Some(&to_pty),
-                Some(&to_plugin),
+                None,
                 Some(&to_server),
                 Some(&to_pty_writer),
                 None,
@@ -1659,13 +1502,12 @@ fn init_session(
         senders: ThreadSenders {
             to_screen: Some(to_screen),
             to_pty: Some(to_pty),
-            to_plugin: Some(to_plugin),
+            to_plugin: None,
             to_pty_writer: Some(to_pty_writer),
             to_background_jobs: Some(to_background_jobs),
             to_server: Some(to_server),
             should_silently_fail: false,
         },
-        capabilities,
         default_shell,
         client_attributes,
         layout,
@@ -1673,7 +1515,6 @@ fn init_session(
         current_input_modes: HashMap::new(),
         screen_thread: Some(screen_thread),
         pty_thread: Some(pty_thread),
-        plugin_thread: Some(plugin_thread),
         pty_writer_thread: Some(pty_writer_thread),
         background_jobs_thread: Some(background_jobs_thread),
         #[cfg(feature = "web_server_capability")]
@@ -1685,34 +1526,19 @@ fn init_session(
 
 fn setup_wizard_floating_pane() -> FloatingPaneLayout {
     let mut setup_wizard_pane = FloatingPaneLayout::new();
-    let configuration = BTreeMap::from_iter([("is_setup_wizard".to_owned(), "true".to_owned())]);
-    setup_wizard_pane.run = Some(Run::Plugin(RunPluginOrAlias::Alias(PluginAlias::new(
-        "configuration",
-        &Some(configuration),
-        None,
-    ))));
+    // Plugin functionality removed
     setup_wizard_pane
 }
 
 fn about_floating_pane() -> FloatingPaneLayout {
     let mut about_pane = FloatingPaneLayout::new();
-    let configuration = BTreeMap::from_iter([("is_release_notes".to_owned(), "true".to_owned())]);
-    about_pane.run = Some(Run::Plugin(RunPluginOrAlias::Alias(PluginAlias::new(
-        "about",
-        &Some(configuration),
-        None,
-    ))));
+    // Plugin functionality removed
     about_pane
 }
 
 fn tip_floating_pane() -> FloatingPaneLayout {
     let mut about_pane = FloatingPaneLayout::new();
-    let configuration = BTreeMap::from_iter([("is_startup_tip".to_owned(), "true".to_owned())]);
-    about_pane.run = Some(Run::Plugin(RunPluginOrAlias::Alias(PluginAlias::new(
-        "about",
-        &Some(configuration),
-        None,
-    ))));
+    // Plugin functionality removed
     about_pane
 }
 
@@ -1756,14 +1582,4 @@ fn should_show_startup_tip(
     }
 }
 
-#[cfg(not(feature = "singlepass"))]
-fn get_engine() -> Engine {
-    log::info!("Compiling plugins using Cranelift");
-    Engine::new(WasmtimeConfig::new().strategy(Strategy::Cranelift)).unwrap()
-}
 
-#[cfg(feature = "singlepass")]
-fn get_engine() -> Engine {
-    log::info!("Compiling plugins using Singlepass");
-    Engine::new(WasmtimeConfig::new().strategy(Strategy::Winch)).unwrap()
-}

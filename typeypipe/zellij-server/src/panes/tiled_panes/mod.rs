@@ -9,7 +9,7 @@ use crate::{
     os_input_output::ServerOsApi,
     output::Output,
     panes::{ActivePanes, PaneId},
-    plugins::PluginInstruction,
+    thread_bus::PluginInstruction,
     tab::{pane_info_for_pane, Pane, MIN_TERMINAL_HEIGHT, MIN_TERMINAL_WIDTH},
     thread_bus::ThreadSenders,
     ui::boundaries::Boundaries,

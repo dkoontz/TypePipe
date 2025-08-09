@@ -3,14 +3,90 @@
 use crate::{
     background_jobs::BackgroundJob,
     os_input_output::ServerOsApi,
-    plugins::PluginInstruction,
     pty::PtyInstruction, 
     pty_writer::PtyWriteInstruction,
     screen::ScreenInstruction,
     ServerInstruction,
 };
+
+// Stub for removed plugin functionality
+#[derive(Debug, Clone)]
+pub enum PluginInstruction {
+    Update(Vec<(Option<u32>, Option<u16>, Event)>),
+    CliPipe { 
+        pipe_id: String,
+        name: String, 
+        payload: Option<String>,
+        plugin: Option<String>,
+        args: Option<std::collections::BTreeMap<String, String>>,
+        configuration: Option<std::collections::BTreeMap<String, String>>,
+        floating: Option<bool>,
+        pane_id_to_replace: Option<PaneId>,
+        cwd: Option<std::path::PathBuf>,
+        pane_title: Option<String>,
+        skip_cache: bool,
+        cli_client_id: Option<u16>,
+    },
+    KeybindPipe { 
+        name: String, 
+        payload: Option<String>,
+        plugin: Option<String>,
+        args: Option<std::collections::BTreeMap<String, String>>,
+        configuration: Option<std::collections::BTreeMap<String, String>>,
+        floating: Option<bool>,
+        pane_id_to_replace: Option<PaneId>,
+        cwd: Option<std::path::PathBuf>,
+        pane_title: Option<String>,
+        skip_cache: bool,
+        cli_client_id: Option<u16>,
+        plugin_and_client_id: Option<(PluginId, u16)>,
+    },
+    Resize(u32, usize, usize), // plugin_id, rows, cols - stub parameters
+    PermissionRequestResult(u32, Option<u16>, Vec<PermissionType>, PermissionStatus, Option<()>), // stub parameters
+    DumpLayoutToPlugin(String, PluginId), // layout, plugin_id
+    ListClientsToPlugin(String, PluginId, Option<u16>), // layout, plugin_id, client_id
+    Unload(u32), // plugin_id
+    Load(u32, String), // plugin_id, path
+    UnblockCliPipes(u32), // plugin_id
+    LogLayoutToHd(String), // layout
+    NewTab(Option<String>, Option<String>, Option<String>, Vec<String>, usize, bool, (u16, bool)), // Stub with all parameters
+    DumpLayout(String), // layout
+    ListClientsMetadata(Vec<String>), // clients
+    Reload(u32), // plugin_id
+    Exit, // for shutdown
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+pub struct PluginId(pub u32);
+
+impl std::fmt::Display for PluginId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl From<PluginId> for u32 {
+    fn from(plugin_id: PluginId) -> u32 {
+        plugin_id.0
+    }
+}
+
+impl From<u32> for PluginId {
+    fn from(id: u32) -> PluginId {
+        PluginId(id)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PluginRenderAsset {
+    pub plugin_id: PluginId,
+    pub client_id: Option<u16>,
+    pub bytes: Vec<u8>,
+}
 use zellij_utils::errors::prelude::*;
 use zellij_utils::{channels, channels::SenderWithContext, errors::ErrorContext};
+use zellij_utils::data::{Event, PermissionStatus, PermissionType};
+use crate::panes::PaneId;
 
 /// A container for senders to the different threads in zellij on the server side
 #[derive(Default, Clone)]
@@ -84,22 +160,9 @@ impl ThreadSenders {
     }
 
 
-    pub fn send_to_plugin(&self, instruction: PluginInstruction) -> Result<()> {
-        if self.should_silently_fail {
-            let _ = self
-                .to_plugin
-                .as_ref()
-                .map(|sender| sender.send(instruction))
-                .unwrap_or_else(|| Ok(()));
-            Ok(())
-        } else {
-            self.to_plugin
-                .as_ref()
-                .context("failed to get plugin sender")?
-                .send(instruction)
-                .to_anyhow()
-                .context("failed to send message to plugin")
-        }
+    pub fn send_to_plugin(&self, _instruction: PluginInstruction) -> Result<()> {
+        // Plugin functionality removed - this is now a no-op
+        Ok(())
     }
 
     pub fn send_to_pty_writer(&self, instruction: PtyWriteInstruction) -> Result<()> {

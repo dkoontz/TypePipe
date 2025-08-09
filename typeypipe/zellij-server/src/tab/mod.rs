@@ -38,8 +38,8 @@ use crate::{
     panes::floating_panes::floating_pane_grid::half_size_middle_geom,
     panes::sixel::SixelImageStore,
     panes::{FloatingPanes, TiledPanes},
-    panes::{LinkHandler, PaneId, PluginPane, TerminalPane},
-    plugins::PluginInstruction,
+    panes::{LinkHandler, PaneId, TerminalPane},
+    thread_bus::PluginInstruction,
     pty::{ClientTabIndexOrPaneId, NewPanePlacement, PtyInstruction, VteBytes},
     thread_bus::ThreadSenders,
     ClientId, ServerInstruction,
@@ -1362,29 +1362,8 @@ impl Tab {
                     self.explicitly_disable_kitty_keyboard_protocol,
                 )) as Box<dyn Pane>
             },
-            PaneId::Plugin(plugin_pid) => {
-                Box::new(PluginPane::new(
-                    plugin_pid,
-                    PaneGeom::default(), // this will be filled out later
-                    self.senders
-                        .to_plugin
-                        .as_ref()
-                        .with_context(err_context)?
-                        .clone(),
-                    initial_pane_title.unwrap_or("".to_owned()),
-                    String::new(),
-                    self.sixel_image_store.clone(),
-                    self.terminal_emulator_colors.clone(),
-                    self.terminal_emulator_color_codes.clone(),
-                    self.link_handler.clone(),
-                    self.character_cell_size.clone(),
-                    self.connected_clients.borrow().iter().copied().collect(),
-                    self.style,
-                    invoked_with,
-                    self.debug,
-                    self.arrow_fonts,
-                    self.styled_underlines,
-                )) as Box<dyn Pane>
+            PaneId::Plugin(_plugin_pid) => {
+                return Err(anyhow!("Plugin panes are not supported in this build"));
             },
         };
 
@@ -1463,29 +1442,8 @@ impl Tab {
                     self.explicitly_disable_kitty_keyboard_protocol,
                 )) as Box<dyn Pane>
             },
-            PaneId::Plugin(plugin_pid) => {
-                Box::new(PluginPane::new(
-                    plugin_pid,
-                    PaneGeom::default(), // this will be filled out later
-                    self.senders
-                        .to_plugin
-                        .as_ref()
-                        .with_context(err_context)?
-                        .clone(),
-                    initial_pane_title.unwrap_or("".to_owned()),
-                    String::new(),
-                    self.sixel_image_store.clone(),
-                    self.terminal_emulator_colors.clone(),
-                    self.terminal_emulator_color_codes.clone(),
-                    self.link_handler.clone(),
-                    self.character_cell_size.clone(),
-                    self.connected_clients.borrow().iter().copied().collect(),
-                    self.style,
-                    invoked_with,
-                    self.debug,
-                    self.arrow_fonts,
-                    self.styled_underlines,
-                )) as Box<dyn Pane>
+            PaneId::Plugin(_plugin_pid) => {
+                return Err(anyhow!("Plugin panes are not supported in this build"));
             },
         };
 
@@ -1554,29 +1512,8 @@ impl Tab {
                     self.explicitly_disable_kitty_keyboard_protocol,
                 )) as Box<dyn Pane>
             },
-            PaneId::Plugin(plugin_pid) => {
-                Box::new(PluginPane::new(
-                    plugin_pid,
-                    PaneGeom::default(), // this will be filled out later
-                    self.senders
-                        .to_plugin
-                        .as_ref()
-                        .with_context(err_context)?
-                        .clone(),
-                    initial_pane_title.unwrap_or("".to_owned()),
-                    String::new(),
-                    self.sixel_image_store.clone(),
-                    self.terminal_emulator_colors.clone(),
-                    self.terminal_emulator_color_codes.clone(),
-                    self.link_handler.clone(),
-                    self.character_cell_size.clone(),
-                    self.connected_clients.borrow().iter().copied().collect(),
-                    self.style,
-                    invoked_with,
-                    self.debug,
-                    self.arrow_fonts,
-                    self.styled_underlines,
-                )) as Box<dyn Pane>
+            PaneId::Plugin(_plugin_pid) => {
+                return Err(anyhow!("Plugin panes are not supported in this build"));
             },
         };
 
@@ -1686,29 +1623,8 @@ impl Tab {
                     self.explicitly_disable_kitty_keyboard_protocol,
                 )) as Box<dyn Pane>
             },
-            PaneId::Plugin(plugin_pid) => {
-                Box::new(PluginPane::new(
-                    plugin_pid,
-                    PaneGeom::default(), // this will be filled out later
-                    self.senders
-                        .to_plugin
-                        .as_ref()
-                        .with_context(err_context)?
-                        .clone(),
-                    initial_pane_title.unwrap_or("".to_owned()),
-                    String::new(),
-                    self.sixel_image_store.clone(),
-                    self.terminal_emulator_colors.clone(),
-                    self.terminal_emulator_color_codes.clone(),
-                    self.link_handler.clone(),
-                    self.character_cell_size.clone(),
-                    self.connected_clients.borrow().iter().copied().collect(),
-                    self.style,
-                    invoked_with,
-                    self.debug,
-                    self.arrow_fonts,
-                    self.styled_underlines,
-                )) as Box<dyn Pane>
+            PaneId::Plugin(_plugin_pid) => {
+                return Err(anyhow!("Plugin panes are not supported in this build"));
             },
         };
 
@@ -1928,63 +1844,8 @@ impl Tab {
                     }
                 }
             },
-            PaneId::Plugin(plugin_pid) => {
-                let new_pane = PluginPane::new(
-                    plugin_pid,
-                    PaneGeom::default(), // this will be filled out later
-                    self.senders
-                        .to_plugin
-                        .as_ref()
-                        .with_context(err_context)?
-                        .clone(),
-                    String::new(),
-                    String::new(),
-                    self.sixel_image_store.clone(),
-                    self.terminal_emulator_colors.clone(),
-                    self.terminal_emulator_color_codes.clone(),
-                    self.link_handler.clone(),
-                    self.character_cell_size.clone(),
-                    self.connected_clients.borrow().iter().copied().collect(),
-                    self.style,
-                    run,
-                    self.debug,
-                    self.arrow_fonts,
-                    self.styled_underlines,
-                );
-                let replaced_pane = if self.floating_panes.panes_contain(&old_pane_id) {
-                    self.floating_panes
-                        .replace_pane(old_pane_id, Box::new(new_pane))
-                        .ok()
-                } else {
-                    self.tiled_panes
-                        .replace_pane(old_pane_id, Box::new(new_pane))
-                };
-                if close_replaced_pane {
-                    drop(replaced_pane);
-                } else {
-                    match replaced_pane {
-                        Some(replaced_pane) => {
-                            let _ = resize_pty!(
-                                replaced_pane,
-                                self.os_api,
-                                self.senders,
-                                self.character_cell_size
-                            );
-                            let is_scrollback_editor = false;
-                            self.suppressed_panes.insert(
-                                PaneId::Plugin(plugin_pid),
-                                (is_scrollback_editor, replaced_pane),
-                            );
-                        },
-                        None => {
-                            Err::<(), _>(anyhow!(
-                                "Could not find editor pane to replace - is no pane focused?"
-                            ))
-                            .with_context(err_context)
-                            .non_fatal();
-                        },
-                    }
-                }
+            PaneId::Plugin(_plugin_pid) => {
+                return Err(anyhow!("Plugin panes are not supported in this build"));
             },
         }
         Ok(())

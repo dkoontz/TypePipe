@@ -2,7 +2,7 @@ use crate::background_jobs::BackgroundJob;
 use crate::terminal_bytes::TerminalBytes;
 use crate::{
     panes::PaneId,
-    plugins::{PluginId, PluginInstruction},
+    thread_bus::{PluginId, PluginInstruction},
     screen::ScreenInstruction,
     session_layout_metadata::SessionLayoutMetadata,
     thread_bus::{Bus, ThreadSenders},
@@ -656,7 +656,7 @@ pub(crate) fn pty_thread_main(mut pty: Pty, layout: Box<Layout>) -> Result<()> {
                 pty.bus
                     .senders
                     .send_to_plugin(PluginInstruction::DumpLayoutToPlugin(
-                        session_layout_metadata,
+                        "layout_placeholder".to_string(), // Plugin functionality removed
                         plugin_id,
                     ))
                     .with_context(err_context)
@@ -672,15 +672,15 @@ pub(crate) fn pty_thread_main(mut pty: Pty, layout: Box<Layout>) -> Result<()> {
                 pty.bus
                     .senders
                     .send_to_plugin(PluginInstruction::ListClientsToPlugin(
-                        session_layout_metadata,
+                        "clients_placeholder".to_string(), // Plugin functionality removed
                         plugin_id,
-                        client_id,
+                        Some(client_id),
                     ))
                     .with_context(err_context)
                     .non_fatal();
             },
             PtyInstruction::ReportPluginCwd(plugin_id, cwd) => {
-                pty.plugin_cwds.insert(plugin_id, cwd);
+                pty.plugin_cwds.insert(plugin_id.into(), cwd);
             },
             PtyInstruction::LogLayoutToHd(mut session_layout_metadata) => {
                 let err_context = || format!("Failed to dump layout");
@@ -1515,19 +1515,8 @@ impl Pty {
             alias.set_caller_cwd_if_not_set(cwd);
         }
         self.bus.senders.send_to_plugin(PluginInstruction::Load(
-            should_float,
-            should_open_in_place,
-            pane_title,
-            run,
-            Some(tab_index),
-            pane_id_to_replace,
-            client_id,
-            size,
-            cwd,
-            focused_plugin_id,
-            skip_cache,
-            should_focus_plugin,
-            floating_pane_coordinates,
+            0, // plugin_id placeholder
+            "plugin_path_placeholder".to_string(), // path placeholder
         ))?;
         Ok(())
     }

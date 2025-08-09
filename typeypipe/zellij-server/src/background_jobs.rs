@@ -23,7 +23,7 @@ use std::sync::{
 use std::time::{Duration, Instant};
 
 use crate::panes::PaneId;
-use crate::plugins::{PluginId, PluginInstruction};
+use crate::thread_bus::{PluginId, PluginInstruction};
 use crate::screen::ScreenInstruction;
 use crate::thread_bus::Bus;
 use crate::ClientId;
@@ -219,7 +219,11 @@ pub(crate) fn background_jobs_main(
                                 if session_name == &current_session_name {
                                     let current_session_plugin_list =
                                         current_session_plugin_list.lock().unwrap().clone();
-                                    session_info.populate_plugin_list(current_session_plugin_list);
+                                    let converted_plugin_list = current_session_plugin_list
+                                        .into_iter()
+                                        .map(|(plugin_id, run_plugin)| (plugin_id.into(), run_plugin))
+                                        .collect();
+                                    session_info.populate_plugin_list(converted_plugin_list);
                                 }
                             }
                             let resurrectable_sessions =
@@ -274,7 +278,7 @@ pub(crate) fn background_jobs_main(
                                 let stderr = output.stderr.to_vec();
                                 let exit_code = output.status.code();
                                 let _ = senders.send_to_plugin(PluginInstruction::Update(vec![(
-                                    Some(plugin_id),
+                                    Some(plugin_id.into()),
                                     Some(client_id),
                                     Event::RunCommandResult(exit_code, stdout, stderr, context),
                                 )]));
@@ -285,7 +289,7 @@ pub(crate) fn background_jobs_main(
                                 let stderr = format!("{}", e).as_bytes().to_vec();
                                 let exit_code = Some(2);
                                 let _ = senders.send_to_plugin(PluginInstruction::Update(vec![(
-                                    Some(plugin_id),
+                                    Some(plugin_id.into()),
                                     Some(client_id),
                                     Event::RunCommandResult(exit_code, stdout, stderr, context),
                                 )]));
@@ -353,7 +357,7 @@ pub(crate) fn background_jobs_main(
                         match web_request(url, verb, headers, body, http_client).await {
                             Ok((status, headers, body)) => {
                                 let _ = senders.send_to_plugin(PluginInstruction::Update(vec![(
-                                    Some(plugin_id),
+                                    Some(plugin_id.into()),
                                     Some(client_id),
                                     Event::WebRequestResult(status, headers, body, context),
                                 )]));
@@ -362,7 +366,7 @@ pub(crate) fn background_jobs_main(
                                 log::error!("Failed to send web request: {}", e);
                                 let error_body = e.to_string().as_bytes().to_vec();
                                 let _ = senders.send_to_plugin(PluginInstruction::Update(vec![(
-                                    Some(plugin_id),
+                                    Some(plugin_id.into()),
                                     Some(client_id),
                                     Event::WebRequestResult(
                                         400,

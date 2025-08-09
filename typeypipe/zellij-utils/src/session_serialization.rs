@@ -226,26 +226,9 @@ pub fn extract_plugin_and_config(
     layout_run: &Option<Run>,
 ) -> (Option<String>, Option<PluginUserConfiguration>) {
     match &layout_run {
-        Some(Run::Plugin(run_plugin_or_alias)) => match run_plugin_or_alias {
-            RunPluginOrAlias::RunPlugin(run_plugin) => (
-                Some(run_plugin.location.display()),
-                Some(run_plugin.configuration.clone()),
-            ),
-            RunPluginOrAlias::Alias(plugin_alias) => {
-                // in this case, the aliases should already be populated by the RunPlugins they
-                // translate to - if they are not, the alias either does not exist or this is some
-                // sort of bug
-                let name = plugin_alias
-                    .run_plugin
-                    .as_ref()
-                    .map(|run_plugin| run_plugin.location.display().to_string())
-                    .unwrap_or_else(|| plugin_alias.name.clone());
-                let configuration = plugin_alias
-                    .run_plugin
-                    .as_ref()
-                    .map(|run_plugin| run_plugin.configuration.clone());
-                (Some(name), configuration)
-            },
+        Some(Run::Plugin(_)) => {
+            // Plugin functionality removed - return None
+            (None, None)
         },
         _ => (None, None),
     }

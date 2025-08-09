@@ -1,6 +1,5 @@
 ---
 source: zellij-utils/src/kdl/mod.rs
-assertion_line: 5184
 expression: serialized.to_string()
 ---
 

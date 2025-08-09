@@ -68,7 +68,7 @@ pub fn configure_logger() {
         .unwrap();
 
     // Set the default logging level to "info" and log it to zellij.log file
-    // Decrease verbosity for `wasmtime_wasi` module because it has a lot of useless info logs
+    // Plugin system removed - wasmtime references cleaned up
     // For `zellij_server::logging_pipe`, we use custom format as we use logging macros to forward stderr output from plugins
     let config = Config::builder()
         .appender(Appender::builder().build("logFile", Box::new(log_file)))
@@ -79,11 +79,7 @@ pub fn configure_logger() {
                 .appender("logFile")
                 .build("isahc", LevelFilter::Error),
         )
-        .logger(
-            Logger::builder()
-                .appender("logPlugin")
-                .build("wasmtime_wasi", LevelFilter::Warn),
-        )
+
         .logger(
             Logger::builder()
                 .appender("logPlugin")

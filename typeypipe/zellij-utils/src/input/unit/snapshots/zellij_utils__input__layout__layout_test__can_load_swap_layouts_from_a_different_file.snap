@@ -1,6 +1,5 @@
 ---
 source: zellij-utils/src/input/./unit/layout_test.rs
-assertion_line: 1938
 expression: "format!(\"{:#?}\", layout)"
 ---
 Layout {
@@ -69,7 +68,7 @@ Layout {
                                         RunPlugin {
                                             _allow_exec_host_cmd: false,
                                             location: Zellij(
-                                                PluginTag(
+                                                Stub(
                                                     "tab-bar",
                                                 ),
                                             ),
@@ -174,7 +173,7 @@ Layout {
                                         RunPlugin {
                                             _allow_exec_host_cmd: false,
                                             location: Zellij(
-                                                PluginTag(
+                                                Stub(
                                                     "status-bar",
                                                 ),
                                             ),
@@ -230,7 +229,7 @@ Layout {
                                         RunPlugin {
                                             _allow_exec_host_cmd: false,
                                             location: Zellij(
-                                                PluginTag(
+                                                Stub(
                                                     "tab-bar",
                                                 ),
                                             ),
@@ -400,7 +399,7 @@ Layout {
                                         RunPlugin {
                                             _allow_exec_host_cmd: false,
                                             location: Zellij(
-                                                PluginTag(
+                                                Stub(
                                                     "status-bar",
                                                 ),
                                             ),
@@ -456,7 +455,7 @@ Layout {
                                         RunPlugin {
                                             _allow_exec_host_cmd: false,
                                             location: Zellij(
-                                                PluginTag(
+                                                Stub(
                                                     "tab-bar",
                                                 ),
                                             ),
@@ -707,7 +706,7 @@ Layout {
                                         RunPlugin {
                                             _allow_exec_host_cmd: false,
                                             location: Zellij(
-                                                PluginTag(
+                                                Stub(
                                                     "status-bar",
                                                 ),
                                             ),

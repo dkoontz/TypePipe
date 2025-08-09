@@ -575,7 +575,7 @@ impl RunPluginLocation {
         let decoded_path = percent_encoding::percent_decode_str(url.path()).decode_utf8_lossy();
 
         match url.scheme() {
-            "zellij" => Ok(Self::Zellij(PluginTag::new(decoded_path))),
+            "zellij" => Ok(Self::Zellij(PluginTag::new(&decoded_path))),
             "file" => {
                 let path = if location.starts_with("file:/") {
                     // Path is absolute, its safe to use URL path.
@@ -606,7 +606,7 @@ impl RunPluginLocation {
                 Ok(Self::File(path))
             },
             "https" | "http" => Ok(Self::Remote(url.as_str().to_owned())),
-            _ => Err(PluginsConfigError::InvalidUrlScheme(url)),
+            _ => Err(PluginsConfigError::InvalidUrlScheme(url.to_string())),
         }
     }
     pub fn display(&self) -> String {

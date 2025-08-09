@@ -7,7 +7,7 @@ use crate::{
     os_input_output::{AsyncReader, Pid, ServerOsApi},
     pane_groups::PaneGroups,
     panes::PaneId,
-    plugins::PluginInstruction,
+    thread_bus::PluginInstruction,
     thread_bus::ThreadSenders,
     ClientId,
 };
@@ -389,7 +389,7 @@ fn create_new_tab_with_swap_layouts(
     let mut senders = ThreadSenders::default().silently_fail_on_send();
     let (mock_plugin_sender, _mock_plugin_receiver): ChannelWithContext<PluginInstruction> =
         channels::unbounded();
-    senders.replace_to_plugin(SenderWithContext::new(mock_plugin_sender));
+    senders.to_plugin = Some(SenderWithContext::new(mock_plugin_sender));
     let max_panes = None;
     let mode_info = default_mode;
     let style = Style::default();
@@ -665,7 +665,7 @@ fn create_new_tab_with_mock_pty_writer(
     let name = String::new();
     let os_api = Box::new(FakeInputOutput::default());
     let mut senders = ThreadSenders::default().silently_fail_on_send();
-    senders.replace_to_pty_writer(mock_pty_writer);
+    senders.to_pty_writer = Some(mock_pty_writer);
     let max_panes = None;
     let mode_info = default_mode;
     let style = Style::default();

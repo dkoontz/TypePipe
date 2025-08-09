@@ -4170,7 +4170,7 @@ Config {
                         RunPlugin {
                             _allow_exec_host_cmd: false,
                             location: Zellij(
-                                PluginTag(
+                                Stub(
                                     "about",
                                 ),
                             ),
@@ -4463,7 +4463,7 @@ Config {
                         RunPlugin {
                             _allow_exec_host_cmd: false,
                             location: Zellij(
-                                PluginTag(
+                                Stub(
                                     "share",
                                 ),
                             ),
@@ -5970,6 +5970,8 @@ Config {
         web_server_key: None,
         enforce_https_for_localhost: None,
         post_command_discovery_hook: None,
+        status_bar: None,
+        status_bar_refresh_interval: None,
     },
     themes: {},
     plugins: PluginAliases {
@@ -5977,7 +5979,7 @@ Config {
             "about": RunPlugin {
                 _allow_exec_host_cmd: false,
                 location: Zellij(
-                    PluginTag(
+                    Stub(
                         "about",
                     ),
                 ),
@@ -5989,7 +5991,7 @@ Config {
             "compact-bar": RunPlugin {
                 _allow_exec_host_cmd: false,
                 location: Zellij(
-                    PluginTag(
+                    Stub(
                         "compact-bar",
                     ),
                 ),
@@ -6001,7 +6003,7 @@ Config {
             "configuration": RunPlugin {
                 _allow_exec_host_cmd: false,
                 location: Zellij(
-                    PluginTag(
+                    Stub(
                         "configuration",
                     ),
                 ),
@@ -6013,7 +6015,7 @@ Config {
             "filepicker": RunPlugin {
                 _allow_exec_host_cmd: false,
                 location: Zellij(
-                    PluginTag(
+                    Stub(
                         "strider",
                     ),
                 ),
@@ -6027,7 +6029,7 @@ Config {
             "plugin-manager": RunPlugin {
                 _allow_exec_host_cmd: false,
                 location: Zellij(
-                    PluginTag(
+                    Stub(
                         "plugin-manager",
                     ),
                 ),
@@ -6039,7 +6041,7 @@ Config {
             "session-manager": RunPlugin {
                 _allow_exec_host_cmd: false,
                 location: Zellij(
-                    PluginTag(
+                    Stub(
                         "session-manager",
                     ),
                 ),
@@ -6051,7 +6053,7 @@ Config {
             "status-bar": RunPlugin {
                 _allow_exec_host_cmd: false,
                 location: Zellij(
-                    PluginTag(
+                    Stub(
                         "status-bar",
                     ),
                 ),
@@ -6063,7 +6065,7 @@ Config {
             "strider": RunPlugin {
                 _allow_exec_host_cmd: false,
                 location: Zellij(
-                    PluginTag(
+                    Stub(
                         "strider",
                     ),
                 ),
@@ -6075,7 +6077,7 @@ Config {
             "tab-bar": RunPlugin {
                 _allow_exec_host_cmd: false,
                 location: Zellij(
-                    PluginTag(
+                    Stub(
                         "tab-bar",
                     ),
                 ),
@@ -6087,7 +6089,7 @@ Config {
             "welcome-screen": RunPlugin {
                 _allow_exec_host_cmd: false,
                 location: Zellij(
-                    PluginTag(
+                    Stub(
                         "session-manager",
                     ),
                 ),

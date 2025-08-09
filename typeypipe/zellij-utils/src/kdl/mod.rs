@@ -2402,6 +2402,10 @@ impl Options {
         let post_command_discovery_hook =
             kdl_property_first_arg_as_string_or_error!(kdl_options, "post_command_discovery_hook")
                 .map(|(hook, _entry)| hook.to_string());
+        let status_bar = kdl_property_first_arg_as_bool_or_error!(kdl_options, "status_bar")
+            .map(|(v, _)| v);
+        let status_bar_refresh_interval = kdl_property_first_arg_as_i64_or_error!(kdl_options, "status_bar_refresh_interval")
+            .map(|(v, _)| v as u64);
 
         Ok(Options {
             simplified_ui,
@@ -2443,6 +2447,8 @@ impl Options {
             web_server_key,
             enforce_https_for_localhost,
             post_command_discovery_hook,
+            status_bar,
+            status_bar_refresh_interval,
         })
     }
     pub fn from_string(stringified_keybindings: &String) -> Result<Self, ConfigError> {

@@ -1,11 +1,11 @@
 use std::collections::{BTreeMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
 
-use crate::thread_bus::ThreadSenders;
+use crate::thread_bus::{ThreadSenders, PluginId};
 use crate::{
     os_input_output::ServerOsApi,
     panes::PaneId,
-    plugins::PluginInstruction,
+    thread_bus::PluginInstruction,
     pty::{ClientTabIndexOrPaneId, NewPanePlacement, PtyInstruction},
     screen::ScreenInstruction,
     ServerInstruction, SessionMetaData, SessionState,
@@ -631,46 +631,23 @@ pub(crate) fn route_action(
                 .send_to_screen(ScreenInstruction::QueryTabNames(client_id))
                 .with_context(err_context)?;
         },
-        Action::NewTiledPluginPane(run_plugin, name, skip_cache, cwd) => {
-            senders
-                .send_to_screen(ScreenInstruction::NewTiledPluginPane(
-                    run_plugin, name, skip_cache, cwd, client_id,
-                ))
-                .with_context(err_context)?;
+        Action::NewTiledPluginPane(_run_plugin, _name, _skip_cache, _cwd) => {
+            // Plugin functionality removed - no-op
         },
         Action::NewFloatingPluginPane(
-            run_plugin,
-            name,
-            skip_cache,
-            cwd,
-            floating_pane_coordinates,
+            _run_plugin,
+            _name,
+            _skip_cache,
+            _cwd,
+            _floating_pane_coordinates,
         ) => {
-            senders
-                .send_to_screen(ScreenInstruction::NewFloatingPluginPane(
-                    run_plugin,
-                    name,
-                    skip_cache,
-                    cwd,
-                    floating_pane_coordinates,
-                    client_id,
-                ))
-                .with_context(err_context)?;
+            // Plugin functionality removed - no-op
         },
-        Action::NewInPlacePluginPane(run_plugin, name, skip_cache) => {
-            if let Some(pane_id) = pane_id {
-                senders
-                    .send_to_screen(ScreenInstruction::NewInPlacePluginPane(
-                        run_plugin, name, pane_id, skip_cache, client_id,
-                    ))
-                    .with_context(err_context)?;
-            } else {
-                log::error!("Must have pane_id in order to open in place pane");
-            }
+        Action::NewInPlacePluginPane(_run_plugin, _name, _skip_cache) => {
+            // Plugin functionality removed - no-op
         },
-        Action::StartOrReloadPlugin(run_plugin) => {
-            senders
-                .send_to_screen(ScreenInstruction::StartOrReloadPluginPane(run_plugin, None))
-                .with_context(err_context)?;
+        Action::StartOrReloadPlugin(_run_plugin) => {
+            // Plugin functionality removed - no-op
         },
         Action::LaunchOrFocusPlugin(
             run_plugin,
@@ -832,7 +809,7 @@ pub(crate) fn route_action(
                         cwd,
                         pane_title,
                         skip_cache,
-                        cli_client_id: client_id,
+                        cli_client_id: Some(client_id),
                     })
                     .with_context(err_context)?;
             } else {
@@ -875,8 +852,8 @@ pub(crate) fn route_action(
                         cwd,
                         pane_title,
                         skip_cache,
-                        cli_client_id: client_id,
-                        plugin_and_client_id: plugin_id.map(|plugin_id| (plugin_id, client_id)),
+                        cli_client_id: Some(client_id),
+                        plugin_and_client_id: plugin_id.map(|plugin_id| (PluginId(plugin_id), client_id)),
                     })
                     .with_context(err_context)?;
             } else {
@@ -988,7 +965,7 @@ pub(crate) fn route_thread_main(
                                                 client_id,
                                                 None,
                                                 rlocked_sessions.senders.clone(),
-                                                rlocked_sessions.capabilities.clone(),
+                                                PluginCapabilities::default(), // Plugin functionality removed
                                                 rlocked_sessions.client_attributes.clone(),
                                                 rlocked_sessions.default_shell.clone(),
                                                 rlocked_sessions.layout.clone(),
@@ -1020,7 +997,7 @@ pub(crate) fn route_thread_main(
                                     client_id,
                                     maybe_pane_id.map(|p| PaneId::Terminal(p)),
                                     rlocked_sessions.senders.clone(),
-                                    rlocked_sessions.capabilities.clone(),
+                                    PluginCapabilities::default(), // Plugin functionality removed
                                     rlocked_sessions.client_attributes.clone(),
                                     rlocked_sessions.default_shell.clone(),
                                     rlocked_sessions.layout.clone(),
@@ -1121,7 +1098,6 @@ pub(crate) fn route_thread_main(
                                 config,
                                 runtime_config_options,
                                 layout,
-                                plugin_aliases,
                                 should_launch_setup_wizard,
                                 is_web_client,
                                 layout_is_welcome_screen,
@@ -1152,7 +1128,7 @@ pub(crate) fn route_thread_main(
                                     config,
                                     runtime_config_options,
                                     tab_position_to_focus,
-                                    pane_id_to_focus,
+                                    pane_id_to_focus.map(|(pane_id, _is_plugin)| pane_id),
                                     is_web_client,
                                     client_id,
                                 );

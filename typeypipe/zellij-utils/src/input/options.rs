@@ -231,6 +231,18 @@ pub struct Options {
     /// of manipulating the command (eg. with a regex) before it gets serialized
     #[clap(long, value_parser)]
     pub post_command_discovery_hook: Option<String>,
+
+    /// Whether to show the status bar at the bottom of the terminal
+    /// default is true
+    #[clap(long, value_parser)]
+    #[serde(default)]
+    pub status_bar: Option<bool>,
+
+    /// Status bar refresh interval in seconds
+    /// default is 1
+    #[clap(long, value_parser)]
+    #[serde(default)]
+    pub status_bar_refresh_interval: Option<u64>,
 }
 
 #[derive(ArgEnum, Deserialize, Serialize, Debug, Clone, Copy, PartialEq)]
@@ -327,6 +339,8 @@ impl Options {
         let post_command_discovery_hook = other
             .post_command_discovery_hook
             .or(self.post_command_discovery_hook.clone());
+        let status_bar = other.status_bar.or(self.status_bar);
+        let status_bar_refresh_interval = other.status_bar_refresh_interval.or(self.status_bar_refresh_interval);
 
         Options {
             simplified_ui,
@@ -368,6 +382,8 @@ impl Options {
             web_server_key,
             enforce_https_for_localhost,
             post_command_discovery_hook,
+            status_bar,
+            status_bar_refresh_interval,
         }
     }
 
@@ -444,6 +460,8 @@ impl Options {
         let post_command_discovery_hook = other
             .post_command_discovery_hook
             .or_else(|| self.post_command_discovery_hook.clone());
+        let status_bar = merge_bool(other.status_bar, self.status_bar);
+        let status_bar_refresh_interval = other.status_bar_refresh_interval.or(self.status_bar_refresh_interval);
 
         Options {
             simplified_ui,
@@ -485,6 +503,8 @@ impl Options {
             web_server_key,
             enforce_https_for_localhost,
             post_command_discovery_hook,
+            status_bar,
+            status_bar_refresh_interval,
         }
     }
 
@@ -558,6 +578,8 @@ impl From<CliOptions> for Options {
             web_server_key: opts.web_server_key,
             enforce_https_for_localhost: opts.enforce_https_for_localhost,
             post_command_discovery_hook: opts.post_command_discovery_hook,
+            status_bar: opts.status_bar,
+            status_bar_refresh_interval: opts.status_bar_refresh_interval,
             ..Default::default()
         }
     }

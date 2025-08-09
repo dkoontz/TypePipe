@@ -7,8 +7,8 @@ use crate::{
     os_input_output::ServerOsApi,
     panes::sixel::SixelImageStore,
     panes::{FloatingPanes, TiledPanes},
-    panes::{LinkHandler, PaneId, PluginPane, TerminalPane},
-    plugins::PluginInstruction,
+    panes::{LinkHandler, PaneId, TerminalPane},
+    thread_bus::PluginInstruction,
     pty::PtyInstruction,
     thread_bus::ThreadSenders,
     ClientId,
@@ -331,46 +331,8 @@ impl<'a> LayoutApplier<'a> {
         position_and_size: &PaneGeom,
         layout: &TiledPaneLayout,
     ) -> Result<u32> {
-        let err_context = || format!("Failed to start new plugin pane");
-        let pane_title = run.location_string();
-        let pid = new_plugin_ids
-            .get_mut(&run)
-            .and_then(|ids| ids.pop())
-            .with_context(err_context)?;
-        let mut new_plugin = PluginPane::new(
-            pid,
-            *position_and_size,
-            self.senders
-                .to_plugin
-                .as_ref()
-                .with_context(err_context)?
-                .clone(),
-            pane_title,
-            layout.name.clone().unwrap_or_default(),
-            self.sixel_image_store.clone(),
-            self.terminal_emulator_colors.clone(),
-            self.terminal_emulator_color_codes.clone(),
-            self.link_handler.clone(),
-            self.character_cell_size.clone(),
-            self.connected_clients.borrow().iter().copied().collect(),
-            self.style,
-            layout.run.clone(),
-            self.debug,
-            self.arrow_fonts,
-            self.styled_underlines,
-        );
-        if let Some(pane_initial_contents) = &layout.pane_initial_contents {
-            new_plugin.handle_pty_bytes(pane_initial_contents.as_bytes().into());
-            new_plugin.handle_pty_bytes("\n\r".as_bytes().into());
-        }
-
-        new_plugin.set_borderless(layout.borderless);
-        if let Some(exclude_from_sync) = layout.exclude_from_sync {
-            new_plugin.set_exclude_from_sync(exclude_from_sync);
-        }
-        self.tiled_panes
-            .add_pane_with_existing_geom(PaneId::Plugin(pid), Box::new(new_plugin));
-        Ok(pid)
+        // Plugin functionality removed - return error
+        Err(anyhow::anyhow!("Plugin functionality has been removed"))
     }
     fn new_floating_plugin_pane(
         &mut self,
@@ -379,53 +341,8 @@ impl<'a> LayoutApplier<'a> {
         position_and_size: PaneGeom,
         floating_pane_layout: &FloatingPaneLayout,
     ) -> Result<Option<PaneId>> {
-        let mut pid_to_focus = None;
-        let err_context = || format!("Failed to create new floating plugin pane");
-        let pane_title = run.location_string();
-        let pid = new_plugin_ids
-            .get_mut(&run)
-            .and_then(|ids| ids.pop())
-            .with_context(err_context)?;
-        let mut new_pane = PluginPane::new(
-            pid,
-            position_and_size,
-            self.senders
-                .to_plugin
-                .as_ref()
-                .with_context(err_context)?
-                .clone(),
-            pane_title,
-            floating_pane_layout.name.clone().unwrap_or_default(),
-            self.sixel_image_store.clone(),
-            self.terminal_emulator_colors.clone(),
-            self.terminal_emulator_color_codes.clone(),
-            self.link_handler.clone(),
-            self.character_cell_size.clone(),
-            self.connected_clients.borrow().iter().copied().collect(),
-            self.style,
-            floating_pane_layout.run.clone(),
-            self.debug,
-            self.arrow_fonts,
-            self.styled_underlines,
-        );
-        if let Some(pane_initial_contents) = &floating_pane_layout.pane_initial_contents {
-            new_pane.handle_pty_bytes(pane_initial_contents.as_bytes().into());
-            new_pane.handle_pty_bytes("\n\r".as_bytes().into());
-        }
-        new_pane.set_borderless(false);
-        new_pane.set_content_offset(Offset::frame(1));
-        resize_pty!(
-            new_pane,
-            self.os_api,
-            self.senders,
-            self.character_cell_size
-        )?;
-        self.floating_panes
-            .add_pane(PaneId::Plugin(pid), Box::new(new_pane));
-        if floating_pane_layout.focus.unwrap_or(false) {
-            pid_to_focus = Some(PaneId::Plugin(pid));
-        }
-        Ok(pid_to_focus)
+        // Plugin functionality removed - return None
+        Ok(None)
     }
     fn new_floating_terminal_pane(
         &mut self,

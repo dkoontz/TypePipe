@@ -33,7 +33,7 @@ use std::os::unix::io::RawFd;
 use std::sync::{Arc, Mutex};
 
 use crate::{
-    plugins::PluginInstruction,
+    thread_bus::PluginInstruction,
     pty::{ClientTabIndexOrPaneId, NewPanePlacement, PtyInstruction},
 };
 use zellij_utils::ipc::PixelDimensions;
@@ -118,7 +118,7 @@ fn send_cli_action_to_server(
     client_id: ClientId,
 ) {
     let get_current_dir = || PathBuf::from(".");
-    let actions = Action::actions_from_cli(cli_action, Box::new(get_current_dir), None).unwrap();
+    let actions = Action::actions_from_cli((), Box::new(get_current_dir), None).unwrap();
     let senders = session_metadata.senders.clone();
     let capabilities = PluginCapabilities::default();
     let client_attributes = ClientAttributes::default();
@@ -304,6 +304,8 @@ fn create_new_screen(size: Size, advanced_mouse_actions: bool) -> Screen {
         advanced_mouse_actions,
         web_server_ip,
         web_server_port,
+        true,  // status_bar_enabled
+        1,     // status_bar_refresh_interval
     );
     screen
 }
@@ -550,12 +552,10 @@ impl MockScreen {
         let layout = Box::new(Layout::default()); // this is not actually correct!!
         SessionMetaData {
             senders: self.session_metadata.senders.clone(),
-            capabilities: self.session_metadata.capabilities.clone(),
             client_attributes: self.session_metadata.client_attributes.clone(),
             default_shell: self.session_metadata.default_shell.clone(),
             screen_thread: None,
             pty_thread: None,
-            plugin_thread: None,
             pty_writer_thread: None,
             background_jobs_thread: None,
             session_configuration: self.session_metadata.session_configuration.clone(),
@@ -609,12 +609,10 @@ impl MockScreen {
                 to_server: Some(to_server.clone()),
                 should_silently_fail: true,
             },
-            capabilities,
             default_shell: None,
             client_attributes: client_attributes.clone(),
             screen_thread: None,
             pty_thread: None,
-            plugin_thread: None,
             pty_writer_thread: None,
             background_jobs_thread: None,
             layout,

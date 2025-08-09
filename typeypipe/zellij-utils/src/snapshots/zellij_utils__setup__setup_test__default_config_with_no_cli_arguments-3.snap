@@ -42,4 +42,6 @@ Options {
     web_server_key: None,
     enforce_https_for_localhost: None,
     post_command_discovery_hook: None,
+    status_bar: None,
+    status_bar_refresh_interval: None,
 }

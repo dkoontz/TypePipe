@@ -1,6 +1,6 @@
 use std::{collections::VecDeque, io::Write};
 
-use crate::plugins::PluginId;
+use crate::thread_bus::PluginId;
 use log::{debug, error};
 use zellij_utils::errors::prelude::*;
 
@@ -99,7 +99,7 @@ mod logging_pipe_test {
 
     #[test]
     fn write_without_endl_does_not_consume_buffer_after_flush() {
-        let mut pipe = LoggingPipe::new("TestPipe", 0);
+        let mut pipe = LoggingPipe::new("TestPipe", crate::thread_bus::PluginId(0));
 
         let test_buffer = b"Testing write";
 
@@ -111,7 +111,7 @@ mod logging_pipe_test {
 
     #[test]
     fn write_with_single_endl_at_the_end_consumes_whole_buffer_after_flush() {
-        let mut pipe = LoggingPipe::new("TestPipe", 0);
+        let mut pipe = LoggingPipe::new("TestPipe", crate::thread_bus::PluginId(0));
 
         let test_buffer = b"Testing write \n";
 
@@ -123,7 +123,7 @@ mod logging_pipe_test {
 
     #[test]
     fn write_with_endl_in_the_middle_consumes_buffer_up_to_endl_after_flush() {
-        let mut pipe = LoggingPipe::new("TestPipe", 0);
+        let mut pipe = LoggingPipe::new("TestPipe", crate::thread_bus::PluginId(0));
 
         let test_buffer = b"Testing write \n";
         let test_buffer2: &[_] = b"And the rest";
@@ -147,7 +147,7 @@ mod logging_pipe_test {
 
     #[test]
     fn write_with_many_endl_consumes_whole_buffer_after_flush() {
-        let mut pipe = LoggingPipe::new("TestPipe", 0);
+        let mut pipe = LoggingPipe::new("TestPipe", crate::thread_bus::PluginId(0));
 
         let test_buffer: &[_] = b"Testing write \n";
 
@@ -170,7 +170,7 @@ mod logging_pipe_test {
 
     #[test]
     fn write_with_incorrect_byte_boundary_does_not_crash() {
-        let mut pipe = LoggingPipe::new("TestPipe", 0);
+        let mut pipe = LoggingPipe::new("TestPipe", crate::thread_bus::PluginId(0));
 
         let test_buffer = "😱".as_bytes();
 
@@ -188,7 +188,7 @@ mod logging_pipe_test {
 
     #[test]
     fn write_with_many_endls_consumes_everything_after_flush() {
-        let mut pipe = LoggingPipe::new("TestPipe", 0);
+        let mut pipe = LoggingPipe::new("TestPipe", crate::thread_bus::PluginId(0));
         let test_buffer: &[_] = b"Testing write \n";
 
         pipe.write_all(

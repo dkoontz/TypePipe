@@ -44,8 +44,9 @@ use crate::{
     output::Output,
     panes::sixel::SixelImageStore,
     panes::PaneId,
-    plugins::{PluginId, PluginInstruction, PluginRenderAsset},
+    thread_bus::{PluginId, PluginInstruction, PluginRenderAsset},
     pty::{get_default_shell, ClientTabIndexOrPaneId, NewPanePlacement, PtyInstruction, VteBytes},
+    status_bar::StatusBar,
     tab::{SuppressedPanes, Tab},
     thread_bus::Bus,
     ui::{
@@ -750,6 +751,7 @@ pub(crate) struct Screen {
     // is brought online
     web_server_ip: IpAddr,
     web_server_port: u16,
+    status_bar: StatusBar,
 }
 
 impl Screen {
@@ -781,6 +783,8 @@ impl Screen {
         advanced_mouse_actions: bool,
         web_server_ip: IpAddr,
         web_server_port: u16,
+        status_bar_enabled: bool,
+        _status_bar_refresh_interval: u64,
     ) -> Self {
         let session_name = mode_info.session_name.clone().unwrap_or_default();
         let session_info = SessionInfo::new(session_name.clone());
@@ -788,6 +792,9 @@ impl Screen {
         let resurrectable_sessions = BTreeMap::new();
         session_infos_on_machine.insert(session_name.clone(), session_info);
         let current_pane_group = PaneGroups::new(bus.senders.clone());
+        let mut status_bar = StatusBar::new(client_attributes.size.cols);
+        status_bar.set_enabled(status_bar_enabled);
+        status_bar.update(client_attributes.size.cols);
         Screen {
             bus,
             max_panes,
@@ -832,6 +839,7 @@ impl Screen {
             advanced_mouse_actions,
             web_server_ip,
             web_server_port,
+            status_bar,
         }
     }
 
@@ -1228,11 +1236,28 @@ impl Screen {
 
         if self.size != new_screen_size {
             self.size = new_screen_size;
+            
+            // Calculate available size for tabs (reserve bottom row for status bar if enabled)
+            let tab_size = if self.status_bar.is_enabled() {
+                Size {
+                    rows: new_screen_size.rows.saturating_sub(1),
+                    cols: new_screen_size.cols,
+                }
+            } else {
+                new_screen_size
+            };
+            
             for tab in self.tabs.values_mut() {
-                tab.resize_whole_tab(new_screen_size)
+                tab.resize_whole_tab(tab_size)
                     .with_context(err_context)?;
                 tab.set_force_render();
             }
+            
+            // Update status bar width
+            if self.status_bar.is_enabled() {
+                self.status_bar.update(new_screen_size.cols);
+            }
+            
             self.log_and_report_session_state()
                 .with_context(err_context)?;
             self.render(None).with_context(err_context)
@@ -1296,7 +1321,7 @@ impl Screen {
             let _ = self
                 .bus
                 .senders
-                .send_to_plugin(PluginInstruction::UnblockCliPipes(plugin_render_assets))
+                .send_to_plugin(PluginInstruction::UnblockCliPipes(0)) // Plugin functionality removed
                 .context("failed to unblock input pipe");
         }
         Ok(())
@@ -1326,6 +1351,10 @@ impl Screen {
                 .context(err_context)
                 .non_fatal();
         }
+
+        // Add status bar rendering
+        self.render_status_bar(&mut output)?;
+
         if output.is_dirty() {
             let serialized_output = output.serialize().context(err_context)?;
             let _ = self
@@ -1333,6 +1362,23 @@ impl Screen {
                 .senders
                 .send_to_server(ServerInstruction::Render(Some(serialized_output)))
                 .context(err_context);
+        }
+        Ok(())
+    }
+
+    fn render_status_bar(&mut self, output: &mut Output) -> Result<()> {
+        if self.status_bar.is_enabled() {
+            self.status_bar.update(self.size.cols);
+            let status_bar_content = self.status_bar.render_with_style();
+            
+            // Position cursor at bottom row and render status bar
+            let status_bar_position = format!("\x1b[{};1H{}", self.size.rows, status_bar_content);
+            
+            // Add status bar to all connected clients
+            let connected_clients: Vec<ClientId> = self.connected_clients.borrow().keys().copied().collect();
+            for client_id in connected_clients {
+                output.add_post_vte_instruction_to_client(client_id, &status_bar_position);
+            }
         }
         Ok(())
     }
@@ -1429,11 +1475,22 @@ impl Screen {
         let tab_name = tab_name.unwrap_or_else(|| String::new());
 
         let position = self.tabs.len();
+        
+        // Calculate available size for tab (reserve bottom row for status bar if enabled)
+        let tab_size = if self.status_bar.is_enabled() {
+            Size {
+                rows: self.size.rows.saturating_sub(1),
+                cols: self.size.cols,
+            }
+        } else {
+            self.size
+        };
+        
         let mut tab = Tab::new(
             tab_index,
             position,
             tab_name,
-            self.size,
+            tab_size,
             self.character_cell_size.clone(),
             self.stacked_resize.clone(),
             self.sixel_image_store.clone(),
@@ -1802,7 +1859,7 @@ impl Screen {
         let session_layout_metadata = self.get_layout_metadata(Some(self.default_shell.clone()));
         self.bus
             .senders
-            .send_to_plugin(PluginInstruction::LogLayoutToHd(session_layout_metadata))
+            .send_to_plugin(PluginInstruction::LogLayoutToHd("layout_placeholder".to_string())) // Plugin functionality removed
             .with_context(err_context)?;
 
         Ok(())
@@ -2343,13 +2400,13 @@ impl Screen {
                 .copied()
                 .unwrap_or(false);
             self.bus.senders.send_to_plugin(PluginInstruction::NewTab(
+                None, // Plugin functionality removed - using placeholders
                 None,
-                default_shell,
-                Some(tiled_panes_layout),
-                floating_panes_layout,
-                tab_index,
-                should_change_focus_to_new_tab,
-                (client_id, is_web_client),
+                None,
+                vec![],
+                0,
+                false,
+                (0, false),
             ))?;
         } else {
             let active_pane_id = active_tab
@@ -2419,13 +2476,13 @@ impl Screen {
             .copied()
             .unwrap_or(false);
         self.bus.senders.send_to_plugin(PluginInstruction::NewTab(
+            None, // Plugin functionality removed - using placeholders
             None,
-            default_shell,
-            Some(tiled_panes_layout),
-            floating_panes_layout,
-            tab_index,
-            should_change_focus_to_new_tab,
-            (client_id, is_web_client),
+            None,
+            vec![],
+            0,
+            false,
+            (0, false),
         ))?;
         Ok(())
     }
@@ -3268,6 +3325,8 @@ pub(crate) fn screen_thread_main(
         .unwrap_or(false);
     let web_sharing = config_options.web_sharing.unwrap_or_else(Default::default);
     let advanced_mouse_actions = config_options.advanced_mouse_actions.unwrap_or(true);
+    let status_bar_enabled = config_options.status_bar.unwrap_or(true);
+    let status_bar_refresh_interval = config_options.status_bar_refresh_interval.unwrap_or(1);
 
     let thread_senders = bus.senders.clone();
     let mut screen = Screen::new(
@@ -3306,6 +3365,8 @@ pub(crate) fn screen_thread_main(
         advanced_mouse_actions,
         web_server_ip,
         web_server_port,
+        status_bar_enabled,
+        status_bar_refresh_interval,
     );
 
     let mut pending_tab_ids: HashSet<usize> = HashSet::new();
@@ -3348,8 +3409,8 @@ pub(crate) fn screen_thread_main(
 
                     let all_tabs = screen.get_tabs_mut();
                     for tab in all_tabs.values_mut() {
-                        if tab.has_plugin(plugin_id) {
-                            tab.handle_plugin_bytes(plugin_id, client_id, vte_bytes)
+                        if tab.has_plugin(plugin_id.into()) {
+                            tab.handle_plugin_bytes(plugin_id.into(), client_id.unwrap_or(0), vte_bytes)
                                 .context("failed to process plugin bytes")?;
                             break;
                         }
@@ -3781,8 +3842,7 @@ pub(crate) fn screen_thread_main(
                     .bus
                     .senders
                     .send_to_plugin(PluginInstruction::DumpLayout(
-                        session_layout_metadata,
-                        client_id,
+                        "layout_placeholder".to_string(), // Plugin functionality removed
                     ))
                     .with_context(err_context)?;
             },
@@ -3793,8 +3853,7 @@ pub(crate) fn screen_thread_main(
                     .bus
                     .senders
                     .send_to_plugin(PluginInstruction::ListClientsMetadata(
-                        session_layout_metadata,
-                        client_id,
+                        vec!["client_placeholder".to_string()], // Plugin functionality removed
                     ))
                     .with_context(err_context)?;
             },
@@ -4162,13 +4221,13 @@ pub(crate) fn screen_thread_main(
                     .bus
                     .senders
                     .send_to_plugin(PluginInstruction::NewTab(
-                        cwd,
-                        default_shell,
-                        layout,
-                        floating_panes_layout,
-                        tab_index,
-                        should_change_focus_to_new_tab,
-                        (client_id, is_web_client),
+                        None, // Plugin functionality removed - using placeholders
+                        None,
+                        None,
+                        vec![],
+                        0,
+                        false,
+                        (0, false),
                     ))?;
             },
             ScreenInstruction::ApplyLayout(
@@ -4314,13 +4373,13 @@ pub(crate) fn screen_thread_main(
                                 .bus
                                 .senders
                                 .send_to_plugin(PluginInstruction::NewTab(
+                                    None, // Plugin functionality removed - using placeholders
                                     None,
-                                    default_shell,
                                     None,
                                     vec![],
-                                    tab_index,
-                                    should_change_focus_to_new_tab,
-                                    (client_id, is_web_client),
+                                    0,
+                                    false,
+                                    (0, false),
                                 ))?;
                         }
                     }
@@ -4714,11 +4773,7 @@ pub(crate) fn screen_thread_main(
                     .bus
                     .senders
                     .send_to_plugin(PluginInstruction::Reload(
-                        should_float,
-                        pane_title,
-                        run_plugin,
-                        *tab_index,
-                        size,
+                        0, // Plugin functionality removed - using placeholder
                     ))?;
             },
             ScreenInstruction::AddPlugin(
@@ -5640,7 +5695,7 @@ pub(crate) fn screen_thread_main(
                 let _ = screen.log_and_report_session_state();
             },
             ScreenInstruction::InterceptKeyPresses(plugin_id, client_id) => {
-                keybind_intercepts.insert(client_id, plugin_id);
+                keybind_intercepts.insert(client_id, plugin_id.into());
             },
             ScreenInstruction::ClearKeyPressesIntercepts(client_id) => {
                 keybind_intercepts.remove(&client_id);
