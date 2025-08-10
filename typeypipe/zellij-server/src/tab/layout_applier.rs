@@ -30,7 +30,7 @@ pub struct LayoutApplier<'a> {
     terminal_emulator_colors: Rc<RefCell<Palette>>,
     terminal_emulator_color_codes: Rc<RefCell<HashMap<usize, String>>>,
     character_cell_size: Rc<RefCell<Option<SizeInPixels>>>,
-    connected_clients: Rc<RefCell<HashSet<ClientId>>>,
+
     style: Style,
     display_area: Rc<RefCell<Size>>, // includes all panes (including eg. the status bar and tab bar in the default layout)
     tiled_panes: &'a mut TiledPanes,
@@ -53,7 +53,7 @@ impl<'a> LayoutApplier<'a> {
         terminal_emulator_colors: &Rc<RefCell<Palette>>,
         terminal_emulator_color_codes: &Rc<RefCell<HashMap<usize, String>>>,
         character_cell_size: &Rc<RefCell<Option<SizeInPixels>>>,
-        connected_clients: &Rc<RefCell<HashSet<ClientId>>>,
+        _connected_clients: &Rc<RefCell<HashSet<ClientId>>>,
         style: &Style,
         display_area: &Rc<RefCell<Size>>, // includes all panes (including eg. the status bar and tab bar in the default layout)
         tiled_panes: &'a mut TiledPanes,
@@ -73,7 +73,7 @@ impl<'a> LayoutApplier<'a> {
         let terminal_emulator_colors = terminal_emulator_colors.clone();
         let terminal_emulator_color_codes = terminal_emulator_color_codes.clone();
         let character_cell_size = character_cell_size.clone();
-        let connected_clients = connected_clients.clone();
+
         let style = style.clone();
         let display_area = display_area.clone();
         let os_api = os_api.clone();
@@ -85,7 +85,7 @@ impl<'a> LayoutApplier<'a> {
             terminal_emulator_colors,
             terminal_emulator_color_codes,
             character_cell_size,
-            connected_clients,
+
             style,
             display_area,
             tiled_panes,
@@ -326,20 +326,20 @@ impl<'a> LayoutApplier<'a> {
     }
     fn new_tiled_plugin_pane(
         &mut self,
-        run: RunPluginOrAlias,
-        new_plugin_ids: &mut HashMap<RunPluginOrAlias, Vec<u32>>,
-        position_and_size: &PaneGeom,
-        layout: &TiledPaneLayout,
+        _run: RunPluginOrAlias,
+        _new_plugin_ids: &mut HashMap<RunPluginOrAlias, Vec<u32>>,
+        _position_and_size: &PaneGeom,
+        _layout: &TiledPaneLayout,
     ) -> Result<u32> {
         // Plugin functionality removed - return error
         Err(anyhow::anyhow!("Plugin functionality has been removed"))
     }
     fn new_floating_plugin_pane(
         &mut self,
-        run: RunPluginOrAlias,
-        new_plugin_ids: &mut HashMap<RunPluginOrAlias, Vec<u32>>,
-        position_and_size: PaneGeom,
-        floating_pane_layout: &FloatingPaneLayout,
+        _run: RunPluginOrAlias,
+        _new_plugin_ids: &mut HashMap<RunPluginOrAlias, Vec<u32>>,
+        _position_and_size: PaneGeom,
+        _floating_pane_layout: &FloatingPaneLayout,
     ) -> Result<Option<PaneId>> {
         // Plugin functionality removed - return None
         Ok(None)

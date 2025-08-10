@@ -11,7 +11,7 @@ use std::convert::TryFrom;
 
 use super::options::Options;
 use crate::cli::CliArgs;
-use crate::envs::EnvironmentVariables;
+
 use crate::{home, setup};
 
 const DEFAULT_CONFIG_FILE_NAME: &str = "config.kdl";

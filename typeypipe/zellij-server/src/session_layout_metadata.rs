@@ -6,7 +6,7 @@ use zellij_utils::common_path::common_path_all;
 use zellij_utils::pane_size::PaneGeom;
 use zellij_utils::{
     input::command::RunCommand,
-    input::layout::{Layout, Run, RunPlugin, RunPluginOrAlias},
+    input::layout::{Layout, Run, RunPlugin},
     input::plugins::PluginAliases,
     session_serialization::{
         extract_command_and_args, extract_edit_and_line_number, extract_plugin_and_config,
@@ -16,7 +16,7 @@ use zellij_utils::{
 
 #[derive(Default, Debug, Clone)]
 pub struct SessionLayoutMetadata {
-    default_layout: Box<Layout>,
+
     global_cwd: Option<PathBuf>,
     pub default_shell: Option<PathBuf>,
     pub default_editor: Option<PathBuf>,
@@ -24,9 +24,8 @@ pub struct SessionLayoutMetadata {
 }
 
 impl SessionLayoutMetadata {
-    pub fn new(default_layout: Box<Layout>) -> Self {
+    pub fn new(_default_layout: Box<Layout>) -> Self {
         SessionLayoutMetadata {
-            default_layout,
             ..Default::default()
         }
     }
@@ -326,7 +325,7 @@ impl SessionLayoutMetadata {
         });
         self.default_editor = Some(default_editor);
     }
-    pub fn update_plugin_aliases_in_default_layout(&mut self, plugin_aliases: &PluginAliases) {
+    pub fn update_plugin_aliases_in_default_layout(&mut self, _plugin_aliases: &PluginAliases) {
         // populate_plugin_aliases_in_layout method removed - no-op for simplified shell wrapper
     }
 }

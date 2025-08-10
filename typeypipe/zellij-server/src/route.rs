@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
 
-use crate::thread_bus::{ThreadSenders, PluginId};
+use crate::thread_bus::{ThreadSenders};
 use crate::{
     os_input_output::ServerOsApi,
     panes::PaneId,
@@ -15,7 +15,7 @@ use std::time::Duration;
 use uuid::Uuid;
 use zellij_utils::{
     channels::SenderWithContext,
-    data::{Action, Direction, Event, InputMode, PluginCapabilities, ResizeStrategy, SearchDirection, SearchOption},
+    data::{Action, Direction, Event, InputMode, PluginCapabilities, SearchDirection, SearchOption},
     errors::prelude::*,
     input::{
         command::TerminalAction,
@@ -53,7 +53,7 @@ pub(crate) fn route_action(
     default_shell: Option<TerminalAction>,
     default_layout: Box<Layout>,
     mut seen_cli_pipes: Option<&mut HashSet<String>>,
-    client_keybinds: Keybinds,
+    _client_keybinds: Keybinds,
     default_mode: InputMode,
 ) -> Result<bool> {
     let mut should_break = false;
@@ -77,7 +77,7 @@ pub(crate) fn route_action(
                 .send_to_screen(ScreenInstruction::ToggleTab(client_id))
                 .with_context(err_context)?;
         },
-        Action::Write(key_with_modifier, raw_bytes, is_kitty_keyboard_protocol) => {
+        Action::Write(_key_with_modifier, raw_bytes, is_kitty_keyboard_protocol) => {
             senders
                 .send_to_screen(ScreenInstruction::ClearScroll(client_id))
                 .with_context(err_context)?;
@@ -120,7 +120,7 @@ pub(crate) fn route_action(
                 .send_to_screen(ScreenInstruction::Render)
                 .with_context(err_context)?;
         },
-        Action::Resize(resize_strategy, direction) => {
+        Action::Resize(resize_strategy, _direction) => {
             let screen_instr =
                 ScreenInstruction::Resize(client_id, resize_strategy);
             senders
@@ -945,10 +945,10 @@ pub(crate) fn route_thread_main(
                     let rlocked_sessions =
                         session_data.read().to_anyhow().with_context(err_context)?;
                     match instruction {
-                        ClientToServerMsg::Key(key, raw_bytes, is_kitty_keyboard_protocol) => {
+                        ClientToServerMsg::Key(_key, _raw_bytes, _is_kitty_keyboard_protocol) => {
                             if let Some(rlocked_sessions) = rlocked_sessions.as_ref() {
                                 match rlocked_sessions.get_client_keybinds_and_mode(&client_id) {
-                                    Some((keybinds, input_mode, default_input_mode)) => {
+                                    Some((keybinds, _input_mode, _default_input_mode)) => {
                                         for action in Vec::<Action>::new() // keybinds simplified
                                         {
                                             if route_action(
@@ -1078,7 +1078,7 @@ pub(crate) fn route_thread_main(
                             config,
                             runtime_config_options,
                             layout,
-                            plugin_aliases,
+                            _plugin_aliases,
                             should_launch_setup_wizard,
                             is_web_client,
                             layout_is_welcome_screen,

@@ -281,11 +281,11 @@ impl SessionConfiguration {
         }
         match self.runtime_config.get_mut(client_id) {
             Some(config) => {
-                for (input_mode, key_with_modifier) in keys_to_unbind {
+                for (_input_mode, _key_with_modifier) in keys_to_unbind {
                     // Keybinds simplified - no-op for shell wrapper
                     config_changed = true;
                 }
-                for (input_mode, key_with_modifier, actions) in keys_to_rebind {
+                for (_input_mode, _key_with_modifier, _actions) in keys_to_rebind {
                     // Keybinds simplified - no-op for shell wrapper
                     config_changed = true;
                 }
@@ -348,9 +348,9 @@ impl SessionMetaData {
     pub fn propagate_configuration_changes(
         &mut self,
         config_changes: Vec<(ClientId, Config)>,
-        config_was_written_to_disk: bool,
+        _config_was_written_to_disk: bool,
     ) {
-        for (client_id, new_config) in config_changes {
+        for (_client_id, new_config) in config_changes {
             self.default_shell = new_config.options.default_shell.as_ref().map(|shell| {
                 TerminalAction::RunCommand(RunCommand {
                     command: shell.clone(),
@@ -492,15 +492,7 @@ impl SessionState {
     pub fn client_ids(&self) -> Vec<ClientId> {
         self.clients.keys().copied().collect()
     }
-    pub fn web_client_ids(&self) -> Vec<ClientId> {
-        self.clients
-            .iter()
-            .filter_map(|(c_id, size_and_is_web_client)| {
-                size_and_is_web_client
-                    .and_then(|(_s, is_web_client)| if is_web_client { Some(*c_id) } else { None })
-            })
-            .collect()
-    }
+
     pub fn get_pipe(&self, pipe_name: &str) -> Option<ClientId> {
         self.pipes.get(pipe_name).copied()
     }
@@ -864,7 +856,7 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                 let _ =
                     os_input.send_to_client(client_id, ServerToClientMsg::Exit(ExitReason::Normal));
                 remove_client!(client_id, os_input, session_state);
-                if let Some(min_size) = session_state.read().unwrap().min_client_terminal_size() {
+                if let Some(_min_size) = session_state.read().unwrap().min_client_terminal_size() {
                     session_data
                         .write()
                         .unwrap()
@@ -894,7 +886,7 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
             },
             ServerInstruction::RemoveClient(client_id) => {
                 remove_client!(client_id, os_input, session_state);
-                if let Some(min_size) = session_state.read().unwrap().min_client_terminal_size() {
+                if let Some(_min_size) = session_state.read().unwrap().min_client_terminal_size() {
                     session_data
                         .write()
                         .unwrap()
@@ -918,7 +910,7 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                     ServerToClientMsg::Exit(ExitReason::WebClientsForbidden),
                 );
                 remove_client!(client_id, os_input, session_state);
-                if let Some(min_size) = session_state.read().unwrap().min_client_terminal_size() {
+                if let Some(_min_size) = session_state.read().unwrap().min_client_terminal_size() {
                     session_data
                         .write()
                         .unwrap()
@@ -955,7 +947,7 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                     let _ = os_input
                         .send_to_client(client_id, ServerToClientMsg::Exit(ExitReason::Normal));
                     remove_client!(client_id, os_input, session_state);
-                    if let Some(min_size) = session_state.read().unwrap().min_client_terminal_size()
+                    if let Some(_min_size) = session_state.read().unwrap().min_client_terminal_size()
                     {
                         session_data
                             .write()
@@ -1049,7 +1041,7 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                     if let Some(layout_dir) = layout_dir {
                         connect_to_session.apply_layout_dir(&layout_dir);
                     }
-                    if let Some(min_size) = session_state.read().unwrap().min_client_terminal_size()
+                    if let Some(_min_size) = session_state.read().unwrap().min_client_terminal_size()
                     {
                         session_data
                             .write()
@@ -1155,7 +1147,7 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                     .unwrap()
                         .propagate_configuration_changes(changes, config_was_written_to_disk);
             },
-            ServerInstruction::FailedToWriteConfigToDisk(_client_id, file_path) => {
+            ServerInstruction::FailedToWriteConfigToDisk(_client_id, _file_path) => {
                 session_data
                     .write()
                     .unwrap()
@@ -1202,80 +1194,26 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                     }
                 }
             },
-            ServerInstruction::StartWebServer(client_id) => {
-                if cfg!(feature = "web_server_capability") {
-                    send_to_client!(
-                        client_id,
-                        os_input,
-                        ServerToClientMsg::StartWebServer,
-                        session_state
-                    );
-                } else {
-                    // TODO: test this
-                    log::error!("Cannot start web server: this instance of Zellij was compiled without web_server_capability");
-                }
+            ServerInstruction::StartWebServer(_client_id) => {
+                // Web server functionality removed in simplified version
+                log::warn!("Web server functionality not available in simplified shell wrapper");
             },
             ServerInstruction::ShareCurrentSession(_client_id) => {
-                if cfg!(feature = "web_server_capability") {
-                    let successfully_changed = session_data
-                        .write()
-                        .ok()
-                        .and_then(|mut s| s.as_mut().map(|s| s.web_sharing.set_sharing()))
-                        .unwrap_or(false);
-                    if successfully_changed {
-                        session_data
-                            .write()
-                            .unwrap()
-                        .as_ref()
-                            .unwrap();
-                    }
-                } else {
-                    log::error!("Cannot share session: this instance of Zellij was compiled without web_server_capability");
-                }
+                // Session sharing functionality removed in simplified version
+                log::warn!("Session sharing functionality not available in simplified shell wrapper");
             },
             ServerInstruction::StopSharingCurrentSession(_client_id) => {
-                if cfg!(feature = "web_server_capability") {
-                    let successfully_changed = session_data
-                        .write()
-                        .ok()
-                        .and_then(|mut s| s.as_mut().map(|s| s.web_sharing.set_not_sharing()))
-                        .unwrap_or(false);
-                    if successfully_changed {
-                        // disconnect existing web clients
-                        let web_client_ids: Vec<ClientId> = session_state
-                            .read()
-                            .unwrap()
-                        .web_client_ids()
-                            .iter()
-                            .copied()
-                            .collect();
-                        for client_id in web_client_ids {
-                            let _ = os_input.send_to_client(
-                                client_id,
-                                ServerToClientMsg::Exit(ExitReason::WebClientsForbidden),
-                            );
-                            remove_client!(client_id, os_input, session_state);
-                        }
-
-                        session_data
-                            .write()
-                            .unwrap()
-                        .as_ref()
-                            .unwrap();
-                    }
-                } else {
-                    // TODO: test this
-                    log::error!("Cannot start web server: this instance of Zellij was compiled without web_server_capability");
-                }
+                // Session sharing functionality removed in simplified version
+                log::warn!("Session sharing functionality not available in simplified shell wrapper");
             },
-            ServerInstruction::WebServerStarted(base_url) => {
+            ServerInstruction::WebServerStarted(_base_url) => {
                 session_data
                     .write()
                     .unwrap()
                         .as_ref()
                     .unwrap();
             },
-            ServerInstruction::FailedToStartWebServer(error) => {
+            ServerInstruction::FailedToStartWebServer(_error) => {
                 session_data
                     .write()
                     .unwrap()
@@ -1303,7 +1241,7 @@ fn init_session(
     client_attributes: ClientAttributes,
     options: SessionOptions,
     mut config: Config,
-    client_id: ClientId,
+    _client_id: ClientId,
 ) -> SessionMetaData {
     let SessionOptions {
         opts,
@@ -1338,7 +1276,7 @@ fn init_session(
     let to_background_jobs = SenderWithContext::new(to_background_jobs);
 
     // Determine and initialize the data directory
-    let data_dir = opts.data_dir.unwrap_or_else(get_default_data_dir);
+    let _data_dir = opts.data_dir.unwrap_or_else(get_default_data_dir);
 
 
 
@@ -1359,13 +1297,13 @@ fn init_session(
             ..Default::default()
         })
     });
-    let path_to_default_shell = config_options
+    let _path_to_default_shell = config_options
         .default_shell
         .clone()
         .unwrap_or_else(|| get_default_shell());
 
-    let default_mode = config_options.default_mode.unwrap_or_default();
-    let default_keybinds = config.keybinds.clone();
+    let _default_mode = config_options.default_mode.unwrap_or_default();
+    let _default_keybinds = config.keybinds.clone();
 
     let pty_thread = thread::Builder::new()
         .name("pty".to_string())
@@ -1494,27 +1432,24 @@ fn init_session(
         pty_thread: Some(pty_thread),
         pty_writer_thread: Some(pty_writer_thread),
         background_jobs_thread: Some(background_jobs_thread),
-        #[cfg(feature = "web_server_capability")]
-        web_sharing: config.options.web_sharing.unwrap_or(WebSharing::Off),
-        #[cfg(not(feature = "web_server_capability"))]
-        web_sharing: WebSharing::Disabled,
+        web_sharing: WebSharing::Disabled, // Web sharing disabled in simplified version
     }
 }
 
 fn setup_wizard_floating_pane() -> FloatingPaneLayout {
-    let mut setup_wizard_pane = FloatingPaneLayout::new();
+    let setup_wizard_pane = FloatingPaneLayout::new();
     // Plugin functionality removed
     setup_wizard_pane
 }
 
 fn about_floating_pane() -> FloatingPaneLayout {
-    let mut about_pane = FloatingPaneLayout::new();
+    let about_pane = FloatingPaneLayout::new();
     // Plugin functionality removed
     about_pane
 }
 
 fn tip_floating_pane() -> FloatingPaneLayout {
-    let mut about_pane = FloatingPaneLayout::new();
+    let about_pane = FloatingPaneLayout::new();
     // Plugin functionality removed
     about_pane
 }

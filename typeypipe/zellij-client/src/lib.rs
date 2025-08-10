@@ -6,8 +6,7 @@ mod keyboard_parser;
 pub mod old_config_converter;
 mod stdin_ansi_parser;
 mod stdin_handler;
-#[cfg(feature = "web_server_capability")]
-pub mod web_client;
+// Removed web client module as it's no longer needed
 
 use log::info;
 use std::env::current_exe;

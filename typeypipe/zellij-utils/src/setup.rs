@@ -537,18 +537,17 @@ impl Setup {
         writeln!(&mut message, "[CACHE DIR]: {}", ZELLIJ_CACHE_DIR.display()).unwrap();
         writeln!(&mut message, "[DATA DIR]: {:?}", data_dir).unwrap();
         message.push_str(&format!("[PLUGIN DIR]: {:?}\n", plugin_dir));
-        if !cfg!(feature = "disable_automatic_asset_installation") {
-            writeln!(
-                &mut message,
-                " Builtin, default plugins will not be loaded from disk."
-            )
-            .unwrap();
-            writeln!(
-                &mut message,
-                " Create a custom layout if you require this behavior."
-            )
-            .unwrap();
-        }
+        // Automatic asset installation is always enabled in simplified version
+        writeln!(
+            &mut message,
+            " Builtin, default plugins will not be loaded from disk."
+        )
+        .unwrap();
+        writeln!(
+            &mut message,
+            " Create a custom layout if you require this behavior."
+        )
+        .unwrap();
         if let Some(layout_dir) = layout_dir {
             writeln!(&mut message, "[LAYOUT DIR]: {:?}", layout_dir).unwrap();
         } else {

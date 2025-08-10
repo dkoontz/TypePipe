@@ -1484,18 +1484,18 @@ impl Pty {
     }
     pub fn fill_plugin_cwd(
         &self,
-        should_float: Option<bool>,
-        should_open_in_place: bool, // should be opened in place
-        pane_title: Option<String>, // pane title
-        mut run: RunPluginOrAlias,
-        tab_index: usize,                   // tab index
-        pane_id_to_replace: Option<PaneId>, // pane id to replace if this is to be opened "in-place"
+        _should_float: Option<bool>,
+        _should_open_in_place: bool, // should be opened in place
+        _pane_title: Option<String>, // pane title
+        _run: RunPluginOrAlias,
+        _tab_index: usize,                   // tab index
+        _pane_id_to_replace: Option<PaneId>, // pane id to replace if this is to be opened "in-place"
         client_id: ClientId,
-        size: Size,
-        skip_cache: bool,
+        _size: Size,
+        _skip_cache: bool,
         cwd: Option<PathBuf>,
-        should_focus_plugin: Option<bool>,
-        floating_pane_coordinates: Option<FloatingPaneCoordinates>,
+        _should_focus_plugin: Option<bool>,
+        _floating_pane_coordinates: Option<FloatingPaneCoordinates>,
     ) -> Result<()> {
         let get_focused_cwd = || {
             self.active_panes
@@ -1511,8 +1511,8 @@ impl Pty {
                 })
         };
 
-        let cwd = cwd.or_else(get_focused_cwd);
-        let focused_plugin_id = self
+        let _cwd = cwd.or_else(get_focused_cwd);
+        let _focused_plugin_id = self
             .active_panes
             .get(&client_id)
             .and_then(|pane| match pane {

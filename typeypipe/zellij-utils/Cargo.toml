@@ -24,47 +24,35 @@ kdl = { version = "4.5.0", default-features = false, features = ["span"] }
 lazy_static = { workspace = true }
 log = { workspace = true }
 miette = { workspace = true }
+names = { workspace = true }
 nix = { workspace = true }
-percent-encoding = { version = "2.1.0", default-features = false, features = ["std"] }
-prost = { workspace = true }
-rmp-serde = { workspace = true }
+prost = { version = "0.11.9", default-features = false, features = ["std", "prost-derive"] }
+rmp-serde = { version = "1.1.0", default-features = false }
 serde = { workspace = true }
 serde_json = { workspace = true }
-shellexpand = { version = "3.0.0", default-features = false, features = ["base-0", "tilde"] }
 strip-ansi-escapes = { version = "0.1.0", default-features = false }
-strum = { workspace = true }
-strum_macros = { workspace = true }
+strum = { version = "0.20.0", default-features = false }
+strum_macros = { version = "0.20.0", default-features = false }
 tempfile = { workspace = true }
 thiserror = { workspace = true }
 unicode-width = { workspace = true }
-url = { workspace = true }
-uuid = { workspace = true }
-sha2 = { workspace = true }
+url = { version = "2.2.2", default-features = false, features = ["serde"] }
+uuid = { version = "1.4.1", default-features = false, features = ["serde", "v4", "std"] }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
-async-std = { workspace = true }
+async-std = { version = "1.3.0", default-features = false, features = ["attributes", "default", "std", "unstable"] }
+humantime = { version = "2.1.0", default-features = false }
+interprocess = { version = "1.2.1", default-features = false }
+isahc = { version = "1.7.2", default-features = false, features = ["http2", "text-decoding"] }
 log4rs = { version = "1.2.0", default-features = false, features = ["pattern_encoder", "rolling_file_appender", "compound_policy", "fixed_window_roller", "size_trigger"] }
+notify = { version = "6.1.1", default-features = false, features = ["macos_kqueue"] }
+suggest = { version = "0.4.0", default-features = false }
 termwiz = { workspace = true }
-interprocess = { workspace = true }
-openssl-sys = { version = "0.9.93", default-features = false, features = ["vendored"], optional = true }
-isahc = { workspace = true }
-curl-sys = { version = "0.4", default-features = false, features = ["force-system-lib-on-osx", "ssl"], optional = true }
-humantime = { workspace = true }
-suggest = { workspace = true }
-names = { workspace = true }
-rusqlite = { version = "0.30", default-features = false, features = ["bundled"], optional = true }
-notify = { workspace = true }
 tokio = { workspace = true }
 
 [dev-dependencies]
-insta = { version = "1.6.0", features = ["backtrace"] }
-expect-test = "1.4.1"
 
 [build-dependencies]
 prost-build = "0.11.9"
 
 [features]
-disable_automatic_asset_installation = []
-unstable = []
-web_server_capability = ["dep:rusqlite"]
-vendored_curl = ["isahc/static-curl", "dep:openssl-sys", "dep:curl-sys"]

@@ -738,8 +738,7 @@ pub(crate) struct Screen {
     default_shell: PathBuf,
     styled_underlines: bool,
     arrow_fonts: bool,
-    layout_dir: Option<PathBuf>,
-    default_layout_name: Option<String>,
+
     explicitly_disable_kitty_keyboard_protocol: bool,
     default_editor: Option<PathBuf>,
     web_clients_allowed: bool,
@@ -767,14 +766,14 @@ impl Screen {
         copy_options: CopyOptions,
         debug: bool,
         default_layout: Box<Layout>,
-        default_layout_name: Option<String>,
+        _default_layout_name: Option<String>,
         default_shell: PathBuf,
         session_serialization: bool,
         serialize_pane_viewport: bool,
         scrollback_lines_to_serialize: Option<usize>,
         styled_underlines: bool,
         arrow_fonts: bool,
-        layout_dir: Option<PathBuf>,
+        _layout_dir: Option<PathBuf>,
         explicitly_disable_kitty_keyboard_protocol: bool,
         stacked_resize: bool,
         default_editor: Option<PathBuf>,
@@ -821,7 +820,7 @@ impl Screen {
             session_name,
             session_infos_on_machine,
             default_layout,
-            default_layout_name,
+
             default_shell,
             session_serialization,
             serialize_pane_viewport,
@@ -829,7 +828,7 @@ impl Screen {
             styled_underlines,
             arrow_fonts,
             resurrectable_sessions,
-            layout_dir,
+
             explicitly_disable_kitty_keyboard_protocol,
             default_editor,
             web_clients_allowed,
@@ -1317,7 +1316,7 @@ impl Screen {
             .bus
             .senders
             .send_to_background_jobs(BackgroundJob::RenderToClients);
-        if let Some(plugin_render_assets) = plugin_render_assets {
+        if let Some(_plugin_render_assets) = plugin_render_assets {
             let _ = self
                 .bus
                 .senders
@@ -1852,7 +1851,7 @@ impl Screen {
     }
     fn dump_layout_to_hd(&mut self) -> Result<()> {
         let err_context = || format!("Failed to log and report session state");
-        let session_layout_metadata = self.get_layout_metadata(Some(self.default_shell.clone()));
+        let _session_layout_metadata = self.get_layout_metadata(Some(self.default_shell.clone()));
         self.bus
             .senders
             .send_to_plugin(PluginInstruction::LogLayoutToHd("layout_placeholder".to_string())) // Plugin functionality removed
@@ -2350,7 +2349,7 @@ impl Screen {
     }
     pub fn break_pane(
         &mut self,
-        default_shell: Option<TerminalAction>,
+        _default_shell: Option<TerminalAction>,
         default_layout: Box<Layout>,
         client_id: ClientId,
     ) -> Result<()> {
@@ -2374,7 +2373,7 @@ impl Screen {
             );
             self.new_tab(tab_index, swap_layouts, None, Some(client_id))?;
             let tab = self.tabs.get_mut(&tab_index).with_context(err_context)?;
-            let (mut tiled_panes_layout, mut floating_panes_layout) = default_layout.new_tab();
+            let (_tiled_panes_layout, mut floating_panes_layout) = default_layout.new_tab();
             if pane_to_break_is_floating {
                 tab.show_floating_panes();
                 tab.add_floating_pane(active_pane, active_pane_id, None, true)?;
@@ -2388,8 +2387,8 @@ impl Screen {
                 tab.add_tiled_pane(active_pane, active_pane_id, Some(client_id))?;
                 // ignore_run_instruction method removed
             }
-            let should_change_focus_to_new_tab = true;
-            let is_web_client = self
+            let _should_change_focus_to_new_tab = true;
+            let _is_web_client = self
                 .connected_clients
                 .borrow()
                 .get(&client_id)
@@ -2422,7 +2421,7 @@ impl Screen {
     pub fn break_multiple_panes_to_new_tab(
         &mut self,
         pane_ids: Vec<PaneId>,
-        default_shell: Option<TerminalAction>,
+        _default_shell: Option<TerminalAction>,
         should_change_focus_to_new_tab: bool,
         new_tab_name: Option<String>,
         client_id: ClientId,
@@ -2442,7 +2441,7 @@ impl Screen {
             }
         }
 
-        let (mut tiled_panes_layout, floating_panes_layout) = self.default_layout.new_tab();
+        let (_tiled_panes_layout, _floating_panes_layout) = self.default_layout.new_tab();
         let tab_index = self.get_new_tab_index();
         let swap_layouts = (
             self.default_layout.swap_tiled_layouts.clone(),
@@ -2458,14 +2457,14 @@ impl Screen {
             tab.name = new_tab_name.clone();
         }
         for pane in extracted_panes {
-            let run_instruction = pane.invoked_with().clone();
+            let _run_instruction = pane.invoked_with().clone();
             let pane_id = pane.pid();
             // here we pass None instead of the ClientId, because we do not want this pane to be
             // necessarily focused
             tab.add_tiled_pane(pane, pane_id, None)?;
             // ignore_run_instruction method removed
         }
-        let is_web_client = self
+        let _is_web_client = self
             .connected_clients
             .borrow()
             .get(&client_id)
@@ -2718,7 +2717,7 @@ impl Screen {
     }
     pub fn reconfigure(
         &mut self,
-        new_keybinds: Keybinds,
+        _new_keybinds: Keybinds,
         new_default_mode: InputMode,
         theme: Styling,
         simplified_ui: bool,
@@ -3829,9 +3828,9 @@ pub(crate) fn screen_thread_main(
                 screen.render(None)?;
                 screen.unblock_input()?;
             },
-            ScreenInstruction::DumpLayout(default_shell, client_id) => {
+            ScreenInstruction::DumpLayout(default_shell, _client_id) => {
                 let err_context = || format!("Failed to dump layout");
-                let session_layout_metadata = screen.get_layout_metadata(default_shell);
+                let _session_layout_metadata = screen.get_layout_metadata(default_shell);
                 screen
                     .bus
                     .senders
@@ -3840,9 +3839,9 @@ pub(crate) fn screen_thread_main(
                     ))
                     .with_context(err_context)?;
             },
-            ScreenInstruction::ListClientsMetadata(default_shell, client_id) => {
+            ScreenInstruction::ListClientsMetadata(default_shell, _client_id) => {
                 let err_context = || format!("Failed to dump layout");
-                let session_layout_metadata = screen.get_layout_metadata(default_shell);
+                let _session_layout_metadata = screen.get_layout_metadata(default_shell);
                 screen
                     .bus
                     .senders
@@ -4189,14 +4188,14 @@ pub(crate) fn screen_thread_main(
                 screen.render(None)?;
             },
             ScreenInstruction::NewTab(
-                cwd,
-                default_shell,
-                layout,
-                floating_panes_layout,
+                _cwd,
+                _default_shell,
+                _layout,
+                _floating_panes_layout,
                 tab_name,
                 swap_layouts,
                 should_change_focus_to_new_tab,
-                (client_id, is_web_client),
+                (client_id, _is_web_client),
             ) => {
                 let tab_index = screen.get_new_tab_index();
                 pending_tab_ids.insert(tab_index);
@@ -4330,7 +4329,7 @@ pub(crate) fn screen_thread_main(
             ScreenInstruction::GoToTabName(
                 tab_name,
                 swap_layouts,
-                default_shell,
+                _default_shell,
                 create,
                 client_id,
             ) => {
@@ -4345,7 +4344,7 @@ pub(crate) fn screen_thread_main(
                     screen.active_tab_indices.keys().next().copied()
                 };
                 if let Some(client_id) = client_id {
-                    let is_web_client = screen
+                    let _is_web_client = screen
                         .connected_clients
                         .borrow()
                         .get(&client_id)
@@ -4356,7 +4355,7 @@ pub(crate) fn screen_thread_main(
                         screen.render(None)?;
                         if create && !tab_exists {
                             let tab_index = screen.get_new_tab_index();
-                            let should_change_focus_to_new_tab = true;
+                            let _should_change_focus_to_new_tab = true;
                             screen.new_tab(
                                 tab_index,
                                 swap_layouts,
@@ -4758,10 +4757,10 @@ pub(crate) fn screen_thread_main(
                     );
                 },
             },
-            ScreenInstruction::StartOrReloadPluginPane(run_plugin, pane_title) => {
-                let tab_index = screen.active_tab_indices.values().next().unwrap_or(&1);
-                let size = Size::default();
-                let should_float = Some(false);
+            ScreenInstruction::StartOrReloadPluginPane(_run_plugin, _pane_title) => {
+                let _tab_index = screen.active_tab_indices.values().next().unwrap_or(&1);
+                let _size = Size::default();
+                let _should_float = Some(false);
 
                 screen
                     .bus

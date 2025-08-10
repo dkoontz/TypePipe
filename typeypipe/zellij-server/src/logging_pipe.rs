@@ -16,13 +16,7 @@ pub struct LoggingPipe {
 }
 
 impl LoggingPipe {
-    pub fn new(plugin_name: &str, plugin_id: PluginId) -> LoggingPipe {
-        LoggingPipe {
-            buffer: VecDeque::new(),
-            plugin_name: String::from(plugin_name),
-            plugin_id,
-        }
-    }
+
 
     fn log_message(&self, message: &str) {
         debug!(

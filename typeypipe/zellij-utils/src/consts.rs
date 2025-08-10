@@ -75,10 +75,7 @@ lazy_static! {
         ZELLIJ_CACHE_DIR.join(VERSION).join("seen_release_notes");
 }
 
-pub const FEATURES: &[&str] = &[
-    #[cfg(feature = "disable_automatic_asset_installation")]
-    "disable_automatic_asset_installation",
-];
+pub const FEATURES: &[&str] = &[];
 
 #[cfg(not(target_family = "wasm"))]
 pub use not_wasm::*;

@@ -1,9 +1,9 @@
 // Minimal stub for session serialization - functionality removed for Typey Pipe
-use kdl::{KdlDocument, KdlEntry, KdlNode, KdlValue};
-use std::collections::{BTreeMap, HashMap};
+
+use std::collections::{BTreeMap};
 use std::path::PathBuf;
 
-use crate::pane_size::{Constraint, PaneGeom};
+use crate::pane_size::{PaneGeom};
 
 #[derive(Default, Debug, Clone)]
 pub struct GlobalLayoutManifest {
