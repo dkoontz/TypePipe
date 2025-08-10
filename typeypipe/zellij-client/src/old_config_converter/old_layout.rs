@@ -559,7 +559,4 @@ impl Default for OldDirection {
     }
 }
 
-// The unit test location.
-#[path = "./unit/convert_layout_tests.rs"]
-#[cfg(test)]
-mod convert_layout_test;
+

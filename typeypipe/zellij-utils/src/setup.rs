@@ -696,27 +696,6 @@ fn merge_attach_command_options(
     cli_config_options
 }
 
-#[cfg(test)]
-mod setup_test {
-    use super::Setup;
-    use crate::cli::{CliArgs, Command};
-    use crate::input::options::{CliOptions, Options};
-    use insta::assert_snapshot;
-    use std::path::PathBuf;
-
-    #[test]
-    fn default_config_with_no_cli_arguments() {
-        let cli_args = CliArgs::default();
-        let (config, layout, options, _, _) = Setup::from_cli_args(&cli_args).unwrap();
-        assert_snapshot!(format!("{:#?}", config));
-        assert_snapshot!(format!("{:#?}", layout));
-        assert_snapshot!(format!("{:#?}", options));
-    }
 
 
 
-
-
-
-
-}

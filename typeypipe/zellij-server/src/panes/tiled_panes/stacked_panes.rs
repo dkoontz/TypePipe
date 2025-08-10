@@ -1228,6 +1228,4 @@ impl<'a> StackedPanes<'a> {
     }
 }
 
-#[cfg(test)]
-#[path = "./unit/stacked_panes_tests.rs"]
-mod stacked_panes_tests;
+

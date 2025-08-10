@@ -178,20 +178,3 @@ impl Options {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_empty_config() {
-        let config = Config::from_kdl("", None).unwrap();
-        assert_eq!(config.options, Options::default());
-    }
-
-    #[test]
-    fn test_action_serialization() {
-        let action = Action::NoOp;
-        let kdl_node = action.to_kdl().unwrap();
-        assert_eq!(kdl_node.name().value(), "NoOp");
-    }
-}

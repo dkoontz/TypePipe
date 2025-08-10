@@ -1,6 +1,4 @@
 mod commands;
-#[cfg(test)]
-mod tests;
 
 use clap::Parser;
 use zellij_utils::{

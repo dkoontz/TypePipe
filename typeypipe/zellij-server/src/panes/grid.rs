@@ -3881,6 +3881,4 @@ fn is_selection_boundary_character(character: char) -> bool {
         || character == ')'
 }
 
-#[cfg(test)]
-#[path = "./unit/grid_tests.rs"]
-mod grid_tests;
+

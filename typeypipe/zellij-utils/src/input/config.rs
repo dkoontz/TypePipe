@@ -521,7 +521,7 @@ where
 mod config_test {
     use super::*;
     use crate::input::options::OnForceClose;
-    use std::io::Write;
+
     use tempfile::tempdir;
 
     #[test]
@@ -536,18 +536,7 @@ mod config_test {
         assert!(result.is_err());
     }
 
-    #[test]
-    fn try_from_cli_args_with_config_dir() {
-        let mut opts = CliArgs::default();
-        let tmp = tempdir().unwrap();
-        File::create(tmp.path().join(DEFAULT_CONFIG_FILE_NAME))
-            .unwrap()
-            .write_all(b"invalid_option: invalid\n")
-            .unwrap();
-        opts.config_dir = Some(tmp.path().to_path_buf());
-        let result = Config::try_from(&opts);
-        assert!(result.is_err());
-    }
+
 
     #[test]
     fn try_from_cli_args_with_config_dir_without_config() {

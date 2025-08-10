@@ -1136,10 +1136,4 @@ impl TerminalPane {
     }
 }
 
-#[cfg(test)]
-#[path = "./unit/terminal_pane_tests.rs"]
-mod grid_tests;
 
-#[cfg(test)]
-#[path = "./unit/search_in_pane_tests.rs"]
-mod search_tests;

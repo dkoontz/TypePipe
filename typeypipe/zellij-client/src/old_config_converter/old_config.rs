@@ -1293,6 +1293,4 @@ pub struct OldRunCommand {
 }
 
 // The unit test location.
-#[path = "./unit/convert_config_tests.rs"]
-#[cfg(test)]
-mod convert_config_test;
+

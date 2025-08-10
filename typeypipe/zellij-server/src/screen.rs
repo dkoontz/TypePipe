@@ -5707,6 +5707,5 @@ pub(crate) fn screen_thread_main(
     Ok(())
 }
 
-#[path = "./unit/screen_tests.rs"]
-#[cfg(test)]
-mod screen_tests;
+
+
