@@ -321,8 +321,32 @@ impl Layout {
     }
     
     pub fn new_tab(&self) -> (crate::input::layout::TiledPaneLayout, Vec<crate::input::layout::FloatingPaneLayout>) {
-        // Stub implementation
-        (crate::input::layout::TiledPaneLayout::default(), vec![])
+        // Create a simple single-pane layout for the shell wrapper
+        let mut root_layout = crate::input::layout::TiledPaneLayout::default();
+        
+        // Create a single child pane that will take up the full space
+        let child_pane = crate::input::layout::TiledPaneLayout {
+            children_split_direction: crate::input::layout::SplitDirection::Horizontal,
+            name: None,
+            children: vec![], // This will be a leaf pane
+            split_size: None, // Take up all available space
+            run: None,
+            borderless: false,
+            focus: Some(true), // Focus this pane
+            external_children_index: None,
+            children_are_stacked: false,
+            is_expanded_in_stack: false,
+            exclude_from_sync: None,
+            run_instructions_to_ignore: vec![],
+            hide_floating_panes: false,
+            pane_initial_contents: None,
+        };
+        
+        root_layout.children = vec![child_pane];
+        
+        eprintln!("LAYOUT DEBUG: Created layout with {} children", root_layout.children.len());
+        
+        (root_layout, vec![])
     }
     
     pub fn has_tabs(&self) -> bool {

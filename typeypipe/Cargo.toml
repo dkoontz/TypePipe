@@ -1,5 +1,5 @@
 [package]
-name = "typey-pipe"
+name = "typeypipe"
 version = "0.1.0"
 authors = ["Typey Pipe Contributors"]
 edition = "2021"
@@ -82,8 +82,8 @@ strip = true
 depends = "$auto"
 license-file = ["LICENSE.md", "4"]
 assets = [
-  ["target/release/typey-pipe", "usr/bin/typey-pipe", "755"],
-  ["README.md", "usr/share/doc/typey-pipe/README.md", "644"],
+  ["target/release/typeypipe", "usr/bin/typeypipe", "755"],
+  ["README.md", "usr/share/doc/typeypipe/README.md", "644"],
 ]
 
 [package.metadata.binstall]
@@ -92,7 +92,7 @@ bin-dir = "{ bin }{ binary-ext }"
 pkg-fmt = "tgz"
 
 [[bin]]
-name = "typey-pipe"
+name = "typeypipe"
 path = "src/main.rs"
 
 [features]

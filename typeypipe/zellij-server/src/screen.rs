@@ -1370,13 +1370,17 @@ impl Screen {
             self.status_bar.update(self.size.cols);
             let status_bar_content = self.status_bar.render_with_style();
             
-            // Position cursor at bottom row and render status bar
-            let status_bar_position = format!("\x1b[{};1H{}", self.size.rows, status_bar_content);
-            
             // Add status bar to all connected clients
             let connected_clients: Vec<ClientId> = self.connected_clients.borrow().keys().copied().collect();
             for client_id in connected_clients {
+                // Save cursor position, render status bar, then restore cursor position
+                let save_cursor = "\x1b[s";
+                let status_bar_position = format!("\x1b[{};1H{}", self.size.rows, status_bar_content);
+                let restore_cursor = "\x1b[u";
+                
+                output.add_post_vte_instruction_to_client(client_id, save_cursor);
                 output.add_post_vte_instruction_to_client(client_id, &status_bar_position);
+                output.add_post_vte_instruction_to_client(client_id, restore_cursor);
             }
         }
         Ok(())
@@ -1484,6 +1488,9 @@ impl Screen {
         } else {
             self.size
         };
+        
+        eprintln!("TAB DEBUG: Creating tab with size: {}x{} (screen: {}x{}, status_bar: {}, auto_layout: {})", 
+                 tab_size.cols, tab_size.rows, self.size.cols, self.size.rows, self.status_bar.is_enabled(), self.auto_layout);
         
         let mut tab = Tab::new(
             tab_index,
@@ -3285,10 +3292,13 @@ pub(crate) fn screen_thread_main(
         .clone()
         .unwrap_or(PathBuf::from("/bin/sh"));
     #[cfg(not(test))]
-    let default_shell = config_options
-        .default_shell
-        .clone()
-        .unwrap_or_else(|| get_default_shell());
+    let default_shell = {
+        let shell = config_options
+            .default_shell
+            .clone()
+            .unwrap_or_else(|| get_default_shell());
+        shell
+    };
     let default_editor = config_options
         .scrollback_editor
         .clone()
@@ -3453,7 +3463,56 @@ pub(crate) fn screen_thread_main(
                         }
                     },
                     ClientTabIndexOrPaneId::TabIndex(tab_index) => {
+                        // Create tab if it doesn't exist
+                        if !screen.tabs.contains_key(&tab_index) {
+                            let swap_layouts = (vec![], vec![]);
+                            screen.new_tab(tab_index, swap_layouts, None, Some(1))?;
+                            
+                            // Apply an empty layout to make the tab not pending
+                            let default_layout = TiledPaneLayout::default();
+                            let floating_layout = vec![];
+                            let new_terminal_ids = vec![];  // Empty - we'll add the pane after
+                            let new_floating_terminal_ids = vec![];
+                            let new_plugin_ids = HashMap::new();
+                            screen.apply_layout(
+                                default_layout,
+                                floating_layout,
+                                new_terminal_ids,
+                                new_floating_terminal_ids,
+                                new_plugin_ids,
+                                tab_index,
+                                false, // should_change_client_focus
+                                (1, false), // client_id_and_is_web_client
+                            )?;
+                        }
+                        
+                        // Check if tab is pending first
+                        let tab_is_pending = screen.tabs.get(&tab_index)
+                            .map(|tab| tab.is_pending())
+                            .unwrap_or(false);
+                            
+                        if tab_is_pending {
+                            // Use the default layout to create a proper tab layout
+                            let (tiled_layout, floating_layout) = screen.default_layout.new_tab();
+                            let new_terminal_ids = vec![];  // Empty - we'll add the pane manually after
+                            let new_floating_terminal_ids = vec![];
+                            let new_plugin_ids = HashMap::new();
+                            screen.apply_layout(
+                                tiled_layout,
+                                floating_layout,
+                                new_terminal_ids,
+                                new_floating_terminal_ids,
+                                new_plugin_ids,
+                                tab_index,
+                                false, // should_change_client_focus
+                                (1, false), // client_id_and_is_web_client
+                            )?;
+                        }
+                        
                         if let Some(active_tab) = screen.tabs.get_mut(&tab_index) {
+                            // Use client ID 1 (the first client that connected)
+                            // TODO: This should be improved to get the actual connected client
+                            let client_id = Some(1);
                             active_tab.new_pane(
                                 pid,
                                 initial_pane_title,
@@ -3461,14 +3520,14 @@ pub(crate) fn screen_thread_main(
                                 start_suppressed,
                                 true,
                                 new_pane_placement,
-                                None,
+                                client_id, // Pass the client_id instead of None
                             )?;
                             if let Some(hold_for_command) = hold_for_command {
                                 let is_first_run = true;
                                 active_tab.hold_pane(pid, None, is_first_run, hold_for_command);
                             }
-                        } else {
-                            log::error!("Tab index not found: {:?}", tab_index);
+                            
+
                         }
                     },
                     ClientTabIndexOrPaneId::PaneId(pane_id) => {
@@ -4188,8 +4247,8 @@ pub(crate) fn screen_thread_main(
                 screen.render(None)?;
             },
             ScreenInstruction::NewTab(
-                _cwd,
-                _default_shell,
+                cwd,
+                default_shell,
                 _layout,
                 _floating_panes_layout,
                 tab_name,
@@ -4210,18 +4269,20 @@ pub(crate) fn screen_thread_main(
                     tab_name.clone(),
                     client_id_for_new_tab,
                 )?;
-                screen
-                    .bus
-                    .senders
-                    .send_to_plugin(PluginInstruction::NewTab(
-                        None, // Plugin functionality removed - using placeholders
-                        None,
-                        None,
-                        vec![],
-                        0,
-                        false,
-                        (0, false),
-                    ))?;
+                
+                // Create an initial pane with the shell since we removed plugin system
+                if let Some(default_shell) = default_shell {
+                    screen
+                        .bus
+                        .senders
+                        .send_to_pty(PtyInstruction::SpawnTerminal(
+                            Some(default_shell.clone()),
+                            cwd.map(|p| p.to_string_lossy().to_string()),
+                            NewPanePlacement::NoPreference,
+                            false, // start_suppressed
+                            ClientTabIndexOrPaneId::TabIndex(tab_index),
+                        ))?;
+                }
             },
             ScreenInstruction::ApplyLayout(
                 layout,

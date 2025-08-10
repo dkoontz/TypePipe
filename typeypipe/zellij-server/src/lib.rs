@@ -515,11 +515,12 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
     // preserve the current umask: read current value by setting to another mode, and then restoring it
     let current_umask = umask(Mode::all());
     umask(current_umask);
-    daemonize::Daemonize::new()
-        .working_directory(std::env::current_dir().unwrap())
-        .umask(current_umask.bits() as u32)
-        .start()
-        .expect("could not daemonize the server process");
+    // Temporarily disable daemonization to see debug output
+    // daemonize::Daemonize::new()
+    //     .working_directory(std::env::current_dir().unwrap())
+    //     .umask(current_umask.bits() as u32)
+    //     .start()
+    //     .expect("could not daemonize the server process");
 
     envs::set_zellij("0".to_string());
 
@@ -535,7 +536,6 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
             handle_panic(info, &to_server);
         })
     });
-
     let _ = thread::Builder::new()
         .name("server_listener".to_string())
         .spawn({
@@ -635,21 +635,21 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                     is_web_client,
                 );
 
-                let default_shell = runtime_config_options.default_shell.map(|shell| {
-                    TerminalAction::RunCommand(RunCommand {
-                        command: shell,
-                        cwd: config.options.default_cwd.clone(),
-                        use_terminal_title: true,
-                        ..Default::default()
-                    })
-                });
+                let shell_command = runtime_config_options.default_shell.clone()
+                    .unwrap_or_else(|| get_default_shell());
+                let default_shell = Some(TerminalAction::RunCommand(RunCommand {
+                    command: shell_command,
+                    cwd: config.options.default_cwd.clone(),
+                    use_terminal_title: true,
+                    ..Default::default()
+                }));
                 let cwd = runtime_config_options.default_cwd;
 
                 let spawn_tabs = |tab_layout,
-                                  floating_panes_layout,
-                                  tab_name,
-                                  swap_layouts,
-                                  should_focus_tab| {
+                                   floating_panes_layout,
+                                   tab_name,
+                                   swap_layouts,
+                                   should_focus_tab| {
                     session_data
                         .read()
                         .unwrap()
@@ -668,7 +668,6 @@ pub fn start_server(mut os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
                         ))
                         .unwrap();
                 };
-
                 if layout.has_tabs() {
                     let focused_tab_index = layout.focused_tab_index().unwrap_or(0);
                     for (tab_index, (tab_name, tab_layout, floating_panes_layout)) in

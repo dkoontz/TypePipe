@@ -82,18 +82,13 @@ pub fn spawn_server(socket_path: &Path, debug: bool) -> io::Result<()> {
     if debug {
         cmd.arg("--debug");
     }
-    let status = cmd.status()?;
-
-    if status.success() {
-        Ok(())
-    } else {
-        let msg = "Process returned non-zero exit code";
-        let err_msg = match status.code() {
-            Some(c) => format!("{}: {}", msg, c),
-            None => msg.to_string(),
-        };
-        Err(io::Error::new(io::ErrorKind::Other, err_msg))
-    }
+    
+    let _child = cmd.spawn()?; // Use spawn() instead of status() to not wait
+    
+    // Give the server a moment to start up
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    
+    Ok(())
 }
 
 #[derive(Debug, Clone)]
@@ -178,17 +173,27 @@ pub fn start_client(
             spawn_server(&*ipc_pipe, opts.debug).unwrap();
 
             (
-                ClientToServerMsg::NewClient(
-                    client_attributes,
-                    Box::new(opts.clone()),
-                    Box::new(Config::default()),
-                    Box::new(Options::default()),
-                    Box::new(Layout::default()),
-                    Box::new(Default::default()),
-                    false, // is_web_client
-                    false, // should_launch_setup_wizard
-                    false, // layout_is_welcome_screen
-                ),
+                {
+                    // Parse configuration to get actual options including default_shell
+                    use zellij_utils::setup::Setup;
+                    let (config, layout, config_options, _, _) = Setup::from_cli_args(&opts)
+                        .unwrap_or_else(|_| {
+                            // Fallback to defaults if parsing fails
+                            (Config::default(), Layout::default(), Options::default(), Config::default(), Options::default())
+                        });
+                    
+                    ClientToServerMsg::NewClient(
+                        client_attributes,
+                        Box::new(opts.clone()),
+                        Box::new(config),
+                        Box::new(config_options),
+                        Box::new(layout),
+                        Box::new(Default::default()),
+                        false, // is_web_client
+                        false, // should_launch_setup_wizard
+                        false, // layout_is_welcome_screen
+                    )
+                },
                 ipc_pipe,
             )
         },

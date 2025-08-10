@@ -31,12 +31,15 @@ const DISABLE_MOUSE_SUPPORT: &str =
     "\u{1b}[?1006l\u{1b}[?1015l\u{1b}[?1003l\u{1b}[?1002l\u{1b}[?1000l";
 
 fn into_raw_mode(pid: RawFd) {
-    let mut tio = termios::tcgetattr(pid).expect("could not get terminal attribute");
-    termios::cfmakeraw(&mut tio);
-    match termios::tcsetattr(pid, termios::SetArg::TCSANOW, &tio) {
-        Ok(_) => {},
-        Err(e) => panic!("error {:?}", e),
+    let mut tio = match termios::tcgetattr(pid) {
+        Ok(tio) => tio,
+        Err(_) => {
+            // Skip raw mode setup if not a terminal
+            return;
+        }
     };
+    termios::cfmakeraw(&mut tio);
+    let _ = termios::tcsetattr(pid, termios::SetArg::TCSANOW, &tio);
 }
 
 fn unset_raw_mode(pid: RawFd, orig_termios: termios::Termios) -> Result<(), nix::Error> {

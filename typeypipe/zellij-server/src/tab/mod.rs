@@ -64,7 +64,7 @@ use zellij_utils::{
         },
         parse_keys,
     },
-    pane_size::{Offset, PaneGeom, Size, SizeInPixels, Viewport},
+    pane_size::{Dimension, Offset, PaneGeom, Size, SizeInPixels, Viewport},
 };
 
 #[macro_export]
@@ -4870,7 +4870,10 @@ impl Tab {
         if self.tiled_panes.fullscreen_is_active() {
             self.tiled_panes.unset_fullscreen();
         }
-        let should_auto_layout = self.auto_layout && !self.swap_layouts.is_tiled_damaged();
+        // Force auto layout for the first pane to ensure proper sizing
+        let should_auto_layout = self.auto_layout;
+        eprintln!("PANE DEBUG: auto_layout: {}, is_tiled_damaged: {}, should_auto_layout: {}, has_room_for_new_pane: {}", 
+                 self.auto_layout, self.swap_layouts.is_tiled_damaged(), should_auto_layout, self.tiled_panes.has_room_for_new_pane());
         if self.tiled_panes.has_room_for_new_pane() {
             pane.set_active_at(Instant::now());
             if should_auto_layout {
@@ -4884,6 +4887,33 @@ impl Tab {
             self.set_should_clear_display_before_rendering();
             if let Some(client_id) = client_id {
                 self.tiled_panes.focus_pane(pane_id, client_id);
+            }
+            
+            // Debug: Check pane size after creation and fix if needed
+            if let Some(pane) = self.tiled_panes.get_pane_mut(pane_id) {
+                eprintln!("PANE DEBUG: Created pane with size: {}x{}", pane.cols(), pane.rows());
+                
+                // If pane has wrong size, manually set it to fill the tab
+                if pane.cols() <= 1 || pane.rows() <= 1 {
+                    eprintln!("PANE DEBUG: Fixing pane size to match tab display area");
+                    let display_area = self.display_area.borrow();
+                    let tab_cols = display_area.cols;
+                    let tab_rows = display_area.rows;
+                    drop(display_area);
+                    
+                    // Create proper geometry for the pane to fill the tab
+                    let pane_geom = PaneGeom {
+                        x: 0,
+                        y: 0,
+                        rows: Dimension::fixed(tab_rows),
+                        cols: Dimension::fixed(tab_cols),
+                        stacked: None,
+                        is_pinned: false,
+                        logical_position: None,
+                    };
+                    pane.set_geom(pane_geom);
+                    eprintln!("PANE DEBUG: Fixed pane size to: {}x{}", pane.cols(), pane.rows());
+                }
             }
         }
         if should_auto_layout {
@@ -4910,6 +4940,7 @@ impl Tab {
         self.tiled_panes.expand_pane_in_stack(pane_id); // so that it will get focused by all
                                                         // clients
         self.swap_layouts.set_is_tiled_damaged();
+        eprintln!("DEBUG: add_tiled_pane completed successfully for pane_id: {:?}", pane_id);
         Ok(())
     }
     pub fn add_stacked_pane_to_active_pane(
